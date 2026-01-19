@@ -1,1 +1,2 @@
-# moa-server
+# 모아 MOA
+돈을 모아모아
