@@ -1,0 +1,98 @@
+name: BE Test Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+
+    outputs:
+      image_tag: ${{ steps.calc.outputs.version }}
+      docker_tag: ${{ steps.calc.outputs.docker_version }}
+
+    steps:
+      - name: Checkout (for tagging)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate version
+        id: calc
+        run: |
+          version=$(git rev-parse --short HEAD)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "docker_version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-read-only: false
+
+      - name: Run tests
+        working-directory: ./
+        run: |
+          chmod +x ./gradlew
+          ./gradlew test
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: godqhr721/moa_server:${{ steps.calc.outputs.docker_version }}
+
+  deploy:
+    needs: setup
+    runs-on:
+      - self-hosted
+
+    steps:
+      - name: Check version to deploy
+        run: |
+          echo "Deploying target version: ${{ needs.setup.outputs.docker_tag }}"
+
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Stop existing container and pull latest image
+        run: |
+          if sudo docker inspect moa-test-server &>/dev/null; then
+            sudo docker stop moa-test-server || true
+            sudo docker rm -f moa-test-server || true
+            sudo docker image prune -af || true
+          fi
+          
+          sudo docker pull godqhr721/moa_server:${{ needs.setup.outputs.docker_tag }}
+
+      - name: Run container
+        run: |
+          sudo docker run -v /home/ubuntu/app/logs:/app/logs \
+            --name moa-test-server \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            -e PROFILE= \
+            -d godqhr721/moa_server:${{ needs.setup.outputs.docker_tag }}
