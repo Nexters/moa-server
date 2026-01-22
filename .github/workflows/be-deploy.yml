@@ -3,7 +3,7 @@ name: BE Test Deploy
 on:
   push:
     branches:
-      - project-ci/cd
+      - main
 
 permissions:
   contents: read
