@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/**'
       - 'build.gradle.kts'
+      - '.github/**'
     types:
       - opened
       - synchronize
