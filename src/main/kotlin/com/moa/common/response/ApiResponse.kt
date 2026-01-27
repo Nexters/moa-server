@@ -35,14 +35,6 @@ data class ApiResponse<T>(
             )
         }
 
-        fun error(code: String, message: String): ApiResponse<Unit> {
-            return ApiResponse(
-                code = code,
-                message = message,
-                content = null,
-            )
-        }
-
         fun error(errorCode: ErrorCode): ApiResponse<Unit> {
             return ApiResponse(
                 code = errorCode.code,
@@ -53,8 +45,8 @@ data class ApiResponse<T>(
 
         fun validationError(errors: List<FieldError>): ApiResponse<List<FieldError>> {
             return ApiResponse(
-                code = ErrorCode.VALIDATION_ERROR.code,
-                message = ErrorCode.VALIDATION_ERROR.message,
+                code = ErrorCode.INVALID_INPUT.code,
+                message = ErrorCode.INVALID_INPUT.message,
                 content = errors,
             )
         }
