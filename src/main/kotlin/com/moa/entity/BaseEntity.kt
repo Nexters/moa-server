@@ -1,4 +1,4 @@
-package com.moa.common.entity
+package com.moa.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.EntityListeners
