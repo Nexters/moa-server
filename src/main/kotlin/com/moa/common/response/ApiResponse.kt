@@ -45,8 +45,8 @@ data class ApiResponse<T>(
 
         fun validationError(errors: List<FieldError>): ApiResponse<List<FieldError>> {
             return ApiResponse(
-                code = ErrorCode.INVALID_INPUT.code,
-                message = ErrorCode.INVALID_INPUT.message,
+                code = ErrorCode.BAD_REQUEST.code,
+                message = ErrorCode.BAD_REQUEST.message,
                 content = errors,
             )
         }

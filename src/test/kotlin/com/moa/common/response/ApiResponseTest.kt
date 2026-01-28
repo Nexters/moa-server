@@ -72,7 +72,7 @@ class ApiResponseTest {
     fun `다양한 ErrorCode가 반영된다`() {
 
         val errorCodes = listOf(
-            ErrorCode.INVALID_INPUT,
+            ErrorCode.BAD_REQUEST,
             ErrorCode.RESOURCE_NOT_FOUND,
             ErrorCode.INTERNAL_SERVER_ERROR,
         )
@@ -95,8 +95,8 @@ class ApiResponseTest {
 
         val response = ApiResponse.validationError(errors)
 
-        assertThat(response.code).isEqualTo(ErrorCode.INVALID_INPUT.code)
-        assertThat(response.message).isEqualTo(ErrorCode.INVALID_INPUT.message)
+        assertThat(response.code).isEqualTo(ErrorCode.BAD_REQUEST.code)
+        assertThat(response.message).isEqualTo(ErrorCode.BAD_REQUEST.message)
         assertThat(response.content).hasSize(2)
         assertThat(response.content).containsExactlyElementsOf(errors)
     }
@@ -108,7 +108,7 @@ class ApiResponseTest {
 
         val response = ApiResponse.validationError(errors)
 
-        assertThat(response.code).isEqualTo(ErrorCode.INVALID_INPUT.code)
+        assertThat(response.code).isEqualTo(ErrorCode.BAD_REQUEST.code)
         assertThat(response.content).isEmpty()
     }
 }
