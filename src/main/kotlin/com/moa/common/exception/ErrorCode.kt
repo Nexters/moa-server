@@ -5,14 +5,14 @@ enum class ErrorCode(
     val message: String,
 ) {
     // Common
-    INVALID_INPUT("C001", "잘못된 입력입니다"),
-    INTERNAL_SERVER_ERROR("C002", "서버 내부 오류가 발생했습니다"),
+    INVALID_INPUT("INVALID_INPUT", "잘못된 입력입니다"),
+    INTERNAL_SERVER_ERROR("INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다"),
 
-    RESOURCE_NOT_FOUND("N001", "리소스를 찾을 수 없습니다"),
+    RESOURCE_NOT_FOUND("RESOURCE_NOT_FOUND", "리소스를 찾을 수 없습니다"),
 
-    UNAUTHORIZED("A001", "인증되지 않은 사용자입니다"),
+    UNAUTHORIZED("UNAUTHORIZED", "인증되지 않은 사용자입니다"),
 
-    FORBIDDEN("F001", "권한이 없습니다"),
+    FORBIDDEN("FORBIDDEN", "권한이 없습니다"),
 
-    UNPROCESSABLE_ENTITY("UE001", "처리할 수 없는 요구입니다"),
+    BAD_REQUEST("BAD_REQUEST", "잘못된 요청입니다."),
 }
