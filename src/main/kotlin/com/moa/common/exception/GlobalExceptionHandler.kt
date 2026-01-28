@@ -36,10 +36,10 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
             .body(ApiResponse.error(ex.errorCode))
     }
 
-    @ExceptionHandler(UnprocessableEntityException::class)
-    fun handleCustomException(ex: UnprocessableEntityException): ResponseEntity<ApiResponse<Unit>> {
+    @ExceptionHandler(BadRequestException::class)
+    fun handleBadRequestException(ex: BadRequestException): ResponseEntity<ApiResponse<Unit>> {
         return ResponseEntity
-            .status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponse.error(ex.errorCode))
     }
 
