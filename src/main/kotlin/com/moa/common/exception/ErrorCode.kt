@@ -4,14 +4,16 @@ enum class ErrorCode(
     val code: String,
     val message: String,
 ) {
-    // Common
+    // 5xx
     INTERNAL_SERVER_ERROR("INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다"),
 
+    // 4xx
+    BAD_REQUEST("BAD_REQUEST", "잘못된 요청입니다."),
+    UNAUTHORIZED("UNAUTHORIZED", "인증되지 않은 사용자입니다"),
+    FORBIDDEN("FORBIDDEN", "권한이 없습니다"),
     RESOURCE_NOT_FOUND("RESOURCE_NOT_FOUND", "리소스를 찾을 수 없습니다"),
 
-    UNAUTHORIZED("UNAUTHORIZED", "인증되지 않은 사용자입니다"),
-
-    FORBIDDEN("FORBIDDEN", "권한이 없습니다"),
-
-    BAD_REQUEST("BAD_REQUEST", "잘못된 요청입니다."),
+    INVALID_PAYROLL_INPUT("INVALID_PAYROLL_INPUT", "급여 입력값이 유효하지 않습니다"),
+    INVALID_WORK_POLICY_INPUT("INVALID_WORK_POLICY_INPUT", "근무정책 입력값이 유효하지 않습니다"),
+    REQUIRED_TERMS_MUST_BE_AGREED("REQUIRED_TERMS_MUST_BE_AGREED", "필수 약관은 동의해야 합니다"),
 }
