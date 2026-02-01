@@ -1,13 +1,18 @@
 package com.moa.service.dto
 
-import jakarta.validation.Valid
+import com.moa.entity.Workday
 import jakarta.validation.constraints.NotEmpty
 import java.time.LocalDate
+import java.time.LocalTime
 
 data class WorkPolicyUpsertRequest(
     val effectiveFrom: LocalDate,
 
     @field:NotEmpty
-    @field:Valid
-    val days: List<DayPolicyDto>,
+    val workdays: Set<Workday>,
+
+    val clockInTime: LocalTime,
+    val clockOutTime: LocalTime,
+    val breakStartTime: LocalTime,
+    val breakEndTime: LocalTime,
 )
