@@ -27,7 +27,9 @@ class WorkPolicyVersion(
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "work_policy_version_workdays",
-        joinColumns = [JoinColumn(name = "workPolicyVersionId")]
+        joinColumns = [
+            JoinColumn(name = "work_policy_version_id")
+        ]
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "workday", nullable = false)
