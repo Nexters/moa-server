@@ -1,0 +1,15 @@
+package com.moa.service.auth.oidc
+
+import org.springframework.boot.context.properties.ConfigurationProperties
+
+@ConfigurationProperties(prefix = "oidc")
+data class OidcProviderConfig(
+    val kakao: ProviderProperties,
+) {
+    data class ProviderProperties(
+        val jwksUri: String,
+        val issuer: String,
+        val audience: String,
+        val cacheTtlSeconds: Long = 3600,
+    )
+}
