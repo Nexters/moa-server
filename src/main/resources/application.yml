@@ -1,0 +1,6 @@
+spring:
+  config:
+    import:
+      - classpath:/moa-secret/oauth.yml
+      - classpath:/moa-secret/jwt.yml
+      - classpath:/moa-secret/db.yml
