@@ -18,7 +18,7 @@ class TermsService(
 
     @Transactional(readOnly = true)
     fun getTerms(): TermsResponse {
-        val terms = termRepository.findAllByActiveTrue()
+        val terms = termRepository.findAll()
             .sortedWith(compareByDescending<Term> { it.required }.thenBy { it.code })
             .map {
                 TermDto(
@@ -34,7 +34,7 @@ class TermsService(
 
     @Transactional
     fun getAgreements(memberId: Long): TermsAgreementsResponse {
-        val terms = termRepository.findAllByActiveTrue()
+        val terms = termRepository.findAll()
         val requiredCodes = terms.filter { it.required }.map { it.code }.toSet()
 
         val existingAgreements = termAgreementRepository.findAllByMemberId(memberId)
@@ -76,7 +76,7 @@ class TermsService(
 
     @Transactional
     fun upsertAgreements(memberId: Long, req: TermsAgreementRequest): TermsAgreementsResponse {
-        val terms = termRepository.findAllByActiveTrue()
+        val terms = termRepository.findAll()
         val termByCode = terms.associateBy { it.code }
         val requiredCodes = terms.filter { it.required }.map { it.code }.toSet()
 

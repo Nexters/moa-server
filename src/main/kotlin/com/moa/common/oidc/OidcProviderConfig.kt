@@ -1,4 +1,4 @@
-package com.moa.service.auth.oidc
+package com.moa.common.oidc
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

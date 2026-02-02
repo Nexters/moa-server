@@ -19,7 +19,7 @@ class OnboardingStatusService(
     @Transactional(readOnly = true)
     fun getStatus(memberId: Long, today: LocalDate = LocalDate.now()): OnboardingStatusResponse {
         // 필수 약관 동의 여부
-        val requiredCodes = termRepository.findAllByActiveTrue()
+        val requiredCodes = termRepository.findAll()
             .filter { it.required }
             .map { it.code }
             .toSet()

@@ -1,8 +1,8 @@
-package com.moa.service.auth.oidc
+package com.moa.common.oidc
+
+import com.moa.entity.ProviderType
 
 data class OidcUserInfo(
     val subject: String,
-    val email: String?,
-    val nickname: String?,
     val provider: ProviderType,
 )

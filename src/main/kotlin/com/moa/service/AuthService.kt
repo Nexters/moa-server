@@ -1,13 +1,10 @@
-package com.moa.service.auth
+package com.moa.service
 
 import com.moa.common.auth.JwtTokenProvider
+import com.moa.common.oidc.OidcIdTokenValidator
 import com.moa.entity.Member
-import com.moa.entity.TermAgreement
+import com.moa.entity.ProviderType
 import com.moa.repository.MemberRepository
-import com.moa.repository.TermAgreementRepository
-import com.moa.repository.TermRepository
-import com.moa.service.auth.oidc.OidcIdTokenValidator
-import com.moa.service.auth.oidc.ProviderType
 import com.moa.service.dto.KaKaoSignInUpRequest
 import com.moa.service.dto.KakaoSignInUpResponse
 import org.springframework.stereotype.Service
@@ -18,8 +15,6 @@ class AuthService(
     private val oidcIdTokenValidator: OidcIdTokenValidator,
     private val jwtTokenProvider: JwtTokenProvider,
     private val memberRepository: MemberRepository,
-    private val termRepository: TermRepository,
-    private val termAgreementRepository: TermAgreementRepository,
 ) {
 
     @Transactional
@@ -45,8 +40,6 @@ class AuthService(
             )
         )
 
-        createTermAgreementsForNewMember(registeredMember.id)
-
         val registerToken = jwtTokenProvider.createAccessToken(
             registeredMember.id
         )
@@ -54,19 +47,5 @@ class AuthService(
         return KakaoSignInUpResponse(
             registerToken,
         )
-    }
-
-    private fun createTermAgreementsForNewMember(memberId: Long) {
-        val activeTerms = termRepository.findAllByActiveTrue()
-
-        val termAgreements = activeTerms.map { term ->
-            TermAgreement(
-                memberId = memberId,
-                termCode = term.code,
-                agreed = false,
-            )
-        }
-
-        termAgreementRepository.saveAll(termAgreements)
     }
 }

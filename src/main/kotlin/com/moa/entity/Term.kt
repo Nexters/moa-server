@@ -17,7 +17,4 @@ class Term(
 
     @Column(nullable = false)
     val contentUrl: String,
-
-    @Column(nullable = false)
-    val active: Boolean = true,
 )

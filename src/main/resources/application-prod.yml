@@ -4,7 +4,6 @@ spring:
     url: jdbc:mysql://${db.prod.host}:${db.prod.port}/${db.prod.name}?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8
     username: ${db.prod.username}
     password: ${db.prod.password}
-    pool-name: moa-db-pool
 
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect

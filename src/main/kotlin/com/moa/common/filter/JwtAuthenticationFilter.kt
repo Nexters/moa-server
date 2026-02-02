@@ -18,9 +18,7 @@ class JwtAuthenticationFilter(
     companion object {
         private val EXCLUDED_PATHS = listOf(
             "/api/v1/auth",
-            "/health",
             "/h2-console",
-            "/actuator",
         )
     }
 

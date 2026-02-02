@@ -7,7 +7,9 @@ import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.nio.charset.StandardCharsets
-import java.time.Instant
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.*
 
 @Component
@@ -22,13 +24,13 @@ class JwtTokenProvider(
     private val accessKey = Keys.hmacShaKeyFor(accessTokenSecretKey.toByteArray(StandardCharsets.UTF_8))
 
     fun createAccessToken(userId: Long): String {
-        val now = Instant.now()
-        val expiryDate = now.plusMillis(accessTokenExpirationInMilliseconds)
+        val now = LocalDateTime.now()
+        val expiryDate = now.plus(Duration.ofMillis(accessTokenExpirationInMilliseconds))
 
         return Jwts.builder()
             .subject(userId.toString())
-            .issuedAt(Date.from(now))
-            .expiration(Date.from(expiryDate))
+            .issuedAt(toDate(now))
+            .expiration(toDate(expiryDate))
             .signWith(accessKey)
             .compact()
     }
@@ -60,4 +62,8 @@ class JwtTokenProvider(
             .parseSignedClaims(token)
             .payload
     }
+}
+
+fun toDate(localDateTime: LocalDateTime): Date {
+    return Date.from(localDateTime.atZone(ZoneId.of("Asia/Seoul")).toInstant())
 }

@@ -1,4 +1,4 @@
-package com.moa.service.auth.oidc
+package com.moa.entity
 
 enum class ProviderType {
     KAKAO,

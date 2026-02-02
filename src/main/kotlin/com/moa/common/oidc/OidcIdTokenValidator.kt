@@ -1,7 +1,8 @@
-package com.moa.service.auth.oidc
+package com.moa.common.oidc
 
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.UnauthorizedException
+import com.moa.entity.ProviderType
 import io.jsonwebtoken.Jwts
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
@@ -42,9 +43,6 @@ class OidcIdTokenValidator(
         val claims = try {
             Jwts.parser()
                 .verifyWith(publicKey)
-                // TODO: oauth계정 선정후 주석 해제
-                // .requireIssuer(providerConfig.issuer)
-                // .requireAudience(providerConfig.audience)
                 .build()
                 .parseSignedClaims(idToken)
                 .payload
@@ -54,8 +52,6 @@ class OidcIdTokenValidator(
 
         return OidcUserInfo(
             subject = claims.subject,
-            email = claims["email"] as? String,
-            nickname = claims["nickname"] as? String,
             provider = provider
         )
     }
@@ -71,7 +67,7 @@ class OidcIdTokenValidator(
             return headerMap["kid"] as? String
                 ?: throw UnauthorizedException(ErrorCode.INVALID_ID_TOKEN)
 
-        } catch (e: Exception) {
+        } catch (ex: Exception) {
             throw UnauthorizedException(ErrorCode.INVALID_ID_TOKEN)
         }
     }

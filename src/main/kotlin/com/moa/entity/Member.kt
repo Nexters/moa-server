@@ -1,6 +1,5 @@
 package com.moa.entity
 
-import com.moa.service.auth.oidc.ProviderType
 import jakarta.persistence.*
 
 @Entity

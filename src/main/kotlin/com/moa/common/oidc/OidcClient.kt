@@ -1,4 +1,4 @@
-package com.moa.service.auth.oidc
+package com.moa.common.oidc
 
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.UnauthorizedException

@@ -1,4 +1,4 @@
-package com.moa.service.auth.oidc
+package com.moa.common.oidc
 
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
@@ -36,10 +36,5 @@ class OidcPublicKeyCache(
 
         return keys[kid]
             ?: throw BadRequestException(ErrorCode.INVALID_ID_TOKEN);
-    }
-
-    //TODO : 혹시 강제 초기화 필요할 때를 대비해 남겨둠
-    fun clear() {
-        cache.clear()
     }
 }
