@@ -16,15 +16,10 @@ class OnboardingStatusService(
     private val workPolicyDayPolicyRepository: WorkPolicyDayPolicyRepository,
 ) {
 
-    // TODO. 로그인/Member 연동 후 memberId 가져오도록 변경
-    private fun currentMemberId(): Long = 1L
-
     @Transactional(readOnly = true)
-    fun getStatus(today: LocalDate = LocalDate.now()): OnboardingStatusResponse {
-        val memberId = currentMemberId()
-
+    fun getStatus(memberId: Long, today: LocalDate = LocalDate.now()): OnboardingStatusResponse {
         // 필수 약관 동의 여부
-        val requiredCodes = termRepository.findAll()
+        val requiredCodes = termRepository.findAllByActiveTrue()
             .filter { it.required }
             .map { it.code }
             .toSet()
@@ -34,8 +29,8 @@ class OnboardingStatusService(
 
         val hasRequiredTermsAgreed = requiredCodes.all { agreements[it] == true }
 
-        // 프로필 완료 여부 (임시 stub)
-        val profile = profileRepository.findAll().firstOrNull()
+        // 프로필 완료 여부
+        val profile = profileRepository.findByMemberId(memberId)
         val profileCompleted =
             profile != null && profile.nickname.isNotBlank() && profile.workplaceName.isNotBlank()
 

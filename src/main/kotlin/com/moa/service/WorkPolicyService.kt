@@ -19,12 +19,8 @@ class WorkPolicyService(
     private val dayPolicyRepository: WorkPolicyDayPolicyRepository,
 ) {
 
-    // TODO. 로그인/Member 연동 후 memberId 가져오도록 변경
-    private fun currentMemberId(): Long = 1L
-
     @Transactional
-    fun upsert(req: WorkPolicyUpsertRequest): WorkPolicyResponse {
-        val memberId = currentMemberId()
+    fun upsert(memberId: Long, req: WorkPolicyUpsertRequest): WorkPolicyResponse {
 
         validateDays(req.days)
 
