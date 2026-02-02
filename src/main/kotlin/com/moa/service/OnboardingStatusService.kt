@@ -13,7 +13,6 @@ class OnboardingStatusService(
     private val profileRepository: ProfileRepository,
     private val payrollVersionRepository: PayrollVersionRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
-    private val workPolicyDayPolicyRepository: WorkPolicyDayPolicyRepository,
 ) {
 
     // TODO. 로그인/Member 연동 후 memberId 가져오도록 변경
@@ -50,7 +49,7 @@ class OnboardingStatusService(
                 .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
 
         val workPolicyCompleted =
-            version != null && workPolicyDayPolicyRepository.existsByWorkPolicyVersionId(version.id)
+            version != null && version.workdays.isNotEmpty()
 
         return OnboardingStatusResponse(
             hasRequiredTermsAgreed = hasRequiredTermsAgreed,
