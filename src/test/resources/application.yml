@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: demo
+
+jwt:
+  secret-key: ${jwt.local.access.secret-key}
+  expiration-milliseconds: ${jwt.local.access.expiration}
+
+oidc:
+  kakao:
+    jwks-uri: ${oauth.kakao.jwks-uri}
+    issuer: ${oauth.kakao.issuer}
+    audience: ${oauth.kakao.audience}
+    cache-ttl-seconds: ${oauth.cache-ttl-seconds}
