@@ -9,10 +9,12 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
+import tools.jackson.databind.ObjectMapper
 
 @Component
 class JwtAuthenticationFilter(
     private val jwtTokenProvider: JwtTokenProvider,
+    private val objectMapper: ObjectMapper,
 ) : OncePerRequestFilter() {
 
     companion object {
@@ -55,14 +57,12 @@ class JwtAuthenticationFilter(
         response.characterEncoding = "UTF-8"
 
         val errorCode = ErrorCode.UNAUTHORIZED
-        val body = """
-            {
-                "code": "${errorCode.code}",
-                "message": "${errorCode.message}",
-                "content": null
-            }
-        """.trimIndent()
+        val errorResponse = mapOf(
+            "code" to errorCode.code,
+            "message" to errorCode.message,
+            "content" to null
+        )
 
-        response.writer.write(body)
+        objectMapper.writeValue(response.writer, errorResponse)
     }
 }

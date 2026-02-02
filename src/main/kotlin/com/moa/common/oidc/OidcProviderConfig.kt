@@ -8,8 +8,6 @@ data class OidcProviderConfig(
 ) {
     data class ProviderProperties(
         val jwksUri: String,
-        val issuer: String,
-        val audience: String,
         val cacheTtlSeconds: Long = 3600,
     )
 }

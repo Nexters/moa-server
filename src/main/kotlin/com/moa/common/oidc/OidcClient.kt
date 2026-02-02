@@ -1,7 +1,5 @@
 package com.moa.common.oidc
 
-import com.moa.common.exception.ErrorCode
-import com.moa.common.exception.UnauthorizedException
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import java.math.BigInteger
@@ -21,7 +19,7 @@ class OidcClient(
                 .retrieve()
                 .body(JwksResponse::class.java)
         } catch (ex: Exception) {
-            throw UnauthorizedException(ErrorCode.OIDC_PROVIDER_ERROR)
+            throw RuntimeException("OIDC 공개키를 가져오는데 실패했습니다.", ex)
         }
 
         return response?.keys

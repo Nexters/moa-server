@@ -1,9 +1,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${db.prod.host}:${db.prod.port}/${db.prod.name}?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8
-    username: ${db.prod.username}
-    password: ${db.prod.password}
+    url: jdbc:mysql://${secret.db.prod.host}:${secret.db.prod.port}/${secret.db.prod.name}?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8
+    username: ${secret.db.prod.username}
+    password: ${secret.db.prod.password}
 
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
@@ -15,12 +15,10 @@ spring:
         show_sql: true
 
 jwt:
-  secret-key: ${jwt.prod.access.secret-key}
-  expiration-milliseconds: ${jwt.prod.access.expiration}
+  secret-key: ${secret.jwt.prod.access.secret-key}
+  expiration-milliseconds: ${secret.jwt.prod.access.expiration}
 
 oidc:
   kakao:
-    jwks-uri: ${ouath.kakao.jwks-uri}
-    issuer: ${ouath.kakao.issuer}
-    audience: ${ouath.kakao.audience}
-    cache-ttl-seconds: ${oauth.cache-ttl-seconds}
+    jwks-uri: ${secret.oauth.kakao.jwks-uri}
+    cache-ttl-seconds: ${secret.oauth.cache-ttl-seconds}
