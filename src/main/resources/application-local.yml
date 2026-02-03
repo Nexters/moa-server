@@ -1,0 +1,32 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+    defer-datasource-initialization: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:core;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data-local.sql
+
+jwt:
+  secret-key: ${secret.jwt.local.access.secret-key}
+  expiration-milliseconds: ${secret.jwt.local.access.expiration}
+
+oidc:
+  kakao:
+    jwks-uri: ${secret.oauth.kakao.jwks-uri}
+    cache-ttl-seconds: ${secret.oauth.cache-ttl-seconds}

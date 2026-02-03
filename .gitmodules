@@ -1,0 +1,3 @@
+[submodule "src/main/resources/moa-secret"]
+	path = src/main/resources/moa-secret
+	url = https://github.com/subsub97/moa-secret

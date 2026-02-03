@@ -16,4 +16,8 @@ enum class ErrorCode(
     INVALID_PAYROLL_INPUT("INVALID_PAYROLL_INPUT", "급여 입력값이 유효하지 않습니다"),
     INVALID_WORK_POLICY_INPUT("INVALID_WORK_POLICY_INPUT", "근무정책 입력값이 유효하지 않습니다"),
     REQUIRED_TERMS_MUST_BE_AGREED("REQUIRED_TERMS_MUST_BE_AGREED", "필수 약관은 동의해야 합니다"),
+
+    INVALID_ID_TOKEN("INVALID_ID_TOKEN", "유효하지 않은 ID 토큰입니다"),
+    INVALID_PROVIDER("INVALID_PROVIDER", "유효하지 않는 로그인 방식입니다."),
+    OIDC_PROVIDER_ERROR("OIDC_PROVIDER_ERROR", "인증 제공자 연동 중 오류가 발생했습니다"),
 }

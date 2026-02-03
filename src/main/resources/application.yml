@@ -1,0 +1,9 @@
+spring:
+  config:
+    import:
+      - moa-secret/oauth.yml
+      - moa-secret/jwt.yml
+      - moa-secret/db.yml
+
+  profiles:
+    default: local

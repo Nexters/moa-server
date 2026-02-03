@@ -16,9 +16,6 @@ class TermsService(
     private val termAgreementRepository: TermAgreementRepository,
 ) {
 
-    // TODO. 로그인/Member 연동 후 memberId 가져오도록 변경
-    private fun currentMemberId(): Long = 1L
-
     @Transactional(readOnly = true)
     fun getTerms(): TermsResponse {
         val terms = termRepository.findAll()
@@ -35,26 +32,41 @@ class TermsService(
         return TermsResponse(terms = terms)
     }
 
-    @Transactional(readOnly = true)
-    fun getAgreements(): TermsAgreementsResponse {
-        val memberId = currentMemberId()
-
+    @Transactional
+    fun getAgreements(memberId: Long): TermsAgreementsResponse {
         val terms = termRepository.findAll()
         val requiredCodes = terms.filter { it.required }.map { it.code }.toSet()
 
-        val agreements = termAgreementRepository.findAllByMemberId(memberId)
-            .associate { it.termCode to it.agreed }
+        val existingAgreements = termAgreementRepository.findAllByMemberId(memberId)
+            .associateBy { it.termCode }
+
+        // Lazy create TermAgreement for new terms
+        val newAgreements = terms
+            .filter { !existingAgreements.containsKey(it.code) }
+            .map { term ->
+                TermAgreement(
+                    memberId = memberId,
+                    termCode = term.code,
+                    agreed = false,
+                )
+            }
+
+        if (newAgreements.isNotEmpty()) {
+            termAgreementRepository.saveAll(newAgreements)
+        }
+
+        val allAgreements = existingAgreements + newAgreements.associateBy { it.termCode }
 
         val responseAgreements = terms
             .sortedWith(compareByDescending<Term> { it.required }.thenBy { it.code })
             .map { term ->
                 TermAgreementDto(
                     code = term.code,
-                    agreed = agreements[term.code] == true,
+                    agreed = allAgreements[term.code]?.agreed == true,
                 )
             }
 
-        val hasRequiredTermsAgreed = requiredCodes.all { agreements[it] == true }
+        val hasRequiredTermsAgreed = requiredCodes.all { allAgreements[it]?.agreed == true }
 
         return TermsAgreementsResponse(
             agreements = responseAgreements,
@@ -63,9 +75,7 @@ class TermsService(
     }
 
     @Transactional
-    fun upsertAgreements(req: TermsAgreementRequest): TermsAgreementsResponse {
-        val memberId = currentMemberId()
-
+    fun upsertAgreements(memberId: Long, req: TermsAgreementRequest): TermsAgreementsResponse {
         val terms = termRepository.findAll()
         val termByCode = terms.associateBy { it.code }
         val requiredCodes = terms.filter { it.required }.map { it.code }.toSet()
@@ -100,6 +110,6 @@ class TermsService(
             }
         }
 
-        return getAgreements()
+        return getAgreements(memberId)
     }
 }

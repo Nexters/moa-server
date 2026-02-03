@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${secret.db.prod.host}:${secret.db.prod.port}/${secret.db.prod.name}?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8
+    username: ${secret.db.prod.username}
+    password: ${secret.db.prod.password}
+
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+
+jwt:
+  secret-key: ${secret.jwt.prod.access.secret-key}
+  expiration-milliseconds: ${secret.jwt.prod.access.expiration}
+
+oidc:
+  kakao:
+    jwks-uri: ${secret.oauth.kakao.jwks-uri}
+    cache-ttl-seconds: ${secret.oauth.cache-ttl-seconds}

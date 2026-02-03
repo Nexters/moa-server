@@ -14,16 +14,16 @@ class ProfileService(
 ) {
 
     @Transactional
-    fun upsertProfile(req: ProfileUpsertRequest): ProfileResponse {
+    fun upsertProfile(memberId: Long, req: ProfileUpsertRequest): ProfileResponse {
         val nickname = req.nickname
         val workplaceName = req.workplace.name
 
-        // TODO. Member 연동 후 member.profile = profile 방식으로 1:1 연결 예정
-        val profile = profileRepository.findAll().firstOrNull()?.apply {
+        val profile = profileRepository.findByMemberId(memberId)?.apply {
             this.nickname = nickname
             this.workplaceName = workplaceName
         } ?: profileRepository.save(
             Profile(
+                memberId = memberId,
                 nickname = nickname,
                 workplaceName = workplaceName,
             )

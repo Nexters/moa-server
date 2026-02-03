@@ -2,6 +2,7 @@ package com.moa.common.exception
 
 import com.moa.common.response.ApiResponse
 import com.moa.common.response.FieldError
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -14,6 +15,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @RestControllerAdvice
 class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
+
+    private val log = LoggerFactory.getLogger(this::class.java)
 
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFoundException(ex: NotFoundException): ResponseEntity<ApiResponse<Unit>> {
@@ -41,6 +44,15 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         return ResponseEntity
             .status(HttpStatus.BAD_REQUEST)
             .body(ApiResponse.error(ex.errorCode))
+    }
+
+    @ExceptionHandler(RuntimeException::class)
+    fun handleRuntimeException(ex: RuntimeException): ResponseEntity<ApiResponse<Unit>> {
+        log.error("Unhandled Exception occurred: ${ex.message}", ex)
+
+        return ResponseEntity
+            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(ApiResponse.error(ErrorCode.INTERNAL_SERVER_ERROR))
     }
 
     override fun handleMethodArgumentNotValid(

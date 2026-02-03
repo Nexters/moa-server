@@ -21,7 +21,8 @@ jobs:
       - name: Checkout (for tagging)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
 
       - name: Calculate version
         id: calc
@@ -94,5 +95,5 @@ jobs:
             --name moa-test-server \
             --restart unless-stopped \
             -p 8080:8080 \
-            -e PROFILE= \
+            -e PROFILE=prod\
             -d godqhr721/moa_server:${{ needs.setup.outputs.docker_tag }}
