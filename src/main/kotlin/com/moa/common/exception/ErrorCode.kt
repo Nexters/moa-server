@@ -19,5 +19,5 @@ enum class ErrorCode(
 
     INVALID_ID_TOKEN("INVALID_ID_TOKEN", "유효하지 않은 ID 토큰입니다"),
     INVALID_PROVIDER("INVALID_PROVIDER", "유효하지 않는 로그인 방식입니다."),
-    OIDC_PROVIDER_ERROR("OIDC_PROVIDER_ERROR", "인증 제공자 연동 중 오류가 발생했습니다"),
+    EXPIRED_TOKEN("EXPIRED_TOKEN", "토큰이 만료되었습니다"),
 }

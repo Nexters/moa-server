@@ -3,6 +3,7 @@ package com.moa.common.filter
 import com.moa.common.auth.AuthConstants
 import com.moa.common.auth.JwtTokenProvider
 import com.moa.common.exception.ErrorCode
+import io.jsonwebtoken.ExpiredJwtException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -21,6 +22,10 @@ class JwtAuthenticationFilter(
         private val EXCLUDED_PATHS = listOf(
             "/api/v1/auth",
             "/h2-console",
+            "/api-docs-ui",
+            "/swagger-ui",
+            "/swagger-resources",
+            "/v3/api-docs",
         )
     }
 
@@ -36,27 +41,33 @@ class JwtAuthenticationFilter(
     ) {
         val token = jwtTokenProvider.extractToken(request)
 
-        if (token == null || !jwtTokenProvider.validateToken(token)) {
-            writeUnauthorizedResponse(response)
+        if (token == null) {
+            writeErrorResponse(response, ErrorCode.UNAUTHORIZED)
             return
         }
 
-        val memberId = jwtTokenProvider.getUserIdFromToken(token)
-        if (memberId == null) {
-            writeUnauthorizedResponse(response)
-            return
-        }
+        try {
+            jwtTokenProvider.validateToken(token)
 
-        request.setAttribute(AuthConstants.CURRENT_MEMBER_ID, memberId)
-        filterChain.doFilter(request, response)
+            val memberId = jwtTokenProvider.getUserIdFromToken(token)
+            if (memberId == null) {
+                writeErrorResponse(response, ErrorCode.UNAUTHORIZED)
+                return
+            }
+            request.setAttribute(AuthConstants.CURRENT_MEMBER_ID, memberId)
+            filterChain.doFilter(request, response)
+        } catch (ex: ExpiredJwtException) {
+            writeErrorResponse(response, ErrorCode.EXPIRED_TOKEN)
+        } catch (ex: Exception) {
+            writeErrorResponse(response, ErrorCode.UNAUTHORIZED)
+        }
     }
 
-    private fun writeUnauthorizedResponse(response: HttpServletResponse) {
+    private fun writeErrorResponse(response: HttpServletResponse, errorCode: ErrorCode) {
         response.status = HttpServletResponse.SC_UNAUTHORIZED
         response.contentType = MediaType.APPLICATION_JSON_VALUE
         response.characterEncoding = "UTF-8"
 
-        val errorCode = ErrorCode.UNAUTHORIZED
         val errorResponse = mapOf(
             "code" to errorCode.code,
             "message" to errorCode.message,
