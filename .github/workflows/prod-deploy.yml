@@ -95,5 +95,5 @@ jobs:
             --name moa-test-server \
             --restart unless-stopped \
             -p 8080:8080 \
-            -e SPRING_PROFILES_ACTIVE=prod\
+            -e SPRING_PROFILES_ACTIVE=prod \
             -d godqhr721/moa_server:${{ needs.setup.outputs.docker_tag }}
