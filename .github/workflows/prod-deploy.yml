@@ -81,9 +81,9 @@ jobs:
 
       - name: Stop existing container and pull latest image
         run: |
-          if sudo docker inspect moa-test-server &>/dev/null; then
-            sudo docker stop moa-test-server || true
-            sudo docker rm -f moa-test-server || true
+          if sudo docker inspect moa-server &>/dev/null; then
+            sudo docker stop moa-server || true
+            sudo docker rm -f moa-server || true
             sudo docker image prune -af || true
           fi
           
@@ -92,8 +92,9 @@ jobs:
       - name: Run container
         run: |
           sudo docker run -v /home/ubuntu/app/logs:/app/logs \
-            --name moa-test-server \
+            --name moa-server \
+            --add-host host.docker.internal:host-gateway \
             --restart unless-stopped \
             -p 8080:8080 \
-            -e PROFILE=prod\
+            -e SPRING_PROFILES_ACTIVE=prod \
             -d godqhr721/moa_server:${{ needs.setup.outputs.docker_tag }}
