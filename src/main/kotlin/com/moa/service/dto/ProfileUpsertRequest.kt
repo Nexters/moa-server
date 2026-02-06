@@ -1,6 +1,10 @@
 package com.moa.service.dto
 
+import jakarta.validation.constraints.NotBlank
+
 data class ProfileUpsertRequest(
+    @field:NotBlank
     val nickname: String,
-    val workplace: WorkplaceDto,
+    @field:NotBlank
+    val workplace: String,
 )

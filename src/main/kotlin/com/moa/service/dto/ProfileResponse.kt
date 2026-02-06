@@ -2,5 +2,5 @@ package com.moa.service.dto
 
 data class ProfileResponse(
     val nickname: String,
-    val workplace: WorkplaceDto,
+    val workplace: String,
 )

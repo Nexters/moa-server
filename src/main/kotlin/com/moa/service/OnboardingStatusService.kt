@@ -2,6 +2,9 @@ package com.moa.service
 
 import com.moa.repository.*
 import com.moa.service.dto.OnboardingStatusResponse
+import com.moa.service.dto.PayrollResponse
+import com.moa.service.dto.ProfileResponse
+import com.moa.service.dto.WorkPolicyResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -17,6 +20,43 @@ class OnboardingStatusService(
 
     @Transactional(readOnly = true)
     fun getStatus(memberId: Long, today: LocalDate = LocalDate.now()): OnboardingStatusResponse {
+        // 프로필 완료 여부
+        val profile = profileRepository.findByMemberId(memberId)
+            ?.takeIf { it.nickname.isNotBlank() && it.workplace.isNotBlank() }
+            ?.let {
+                ProfileResponse(
+                    nickname = it.nickname,
+                    workplace = it.workplace,
+                )
+            }
+
+        // 급여 완료 여부
+        val payroll = payrollVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
+            ?.let {
+                PayrollResponse(
+                    effectiveFrom = it.effectiveFrom,
+                    salaryInputType = it.salaryInputType,
+                    salaryAmount = it.salaryAmount,
+                    paydayDay = it.paydayDay,
+                )
+            }
+
+        // 근무정책 완료 여부
+        val workPolicy = workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
+            ?.takeIf { it.workdays.isNotEmpty() }
+            ?.let {
+                WorkPolicyResponse(
+                    effectiveFrom = it.effectiveFrom,
+                    workdays = it.workdays.sorted(),
+                    clockInTime = it.clockInTime,
+                    clockOutTime = it.clockOutTime,
+                    breakStartTime = it.breakStartTime,
+                    breakEndTime = it.breakEndTime,
+                )
+            }
+
         // 필수 약관 동의 여부
         val requiredCodes = termRepository.findAll()
             .filter { it.required }
@@ -28,29 +68,11 @@ class OnboardingStatusService(
 
         val hasRequiredTermsAgreed = requiredCodes.all { agreements[it] == true }
 
-        // 프로필 완료 여부
-        val profile = profileRepository.findByMemberId(memberId)
-        val profileCompleted =
-            profile != null && profile.nickname.isNotBlank() && profile.workplaceName.isNotBlank()
-
-        // 급여 완료 여부
-        val payrollCompleted =
-            payrollVersionRepository
-                .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today) != null
-
-        // 근무정책 완료 여부
-        val version =
-            workPolicyVersionRepository
-                .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
-
-        val workPolicyCompleted =
-            version != null && version.workdays.isNotEmpty()
-
         return OnboardingStatusResponse(
+            profile = profile,
+            payroll = payroll,
+            workPolicy = workPolicy,
             hasRequiredTermsAgreed = hasRequiredTermsAgreed,
-            profileCompleted = profileCompleted,
-            payrollCompleted = payrollCompleted,
-            workPolicyCompleted = workPolicyCompleted,
         )
     }
 }
