@@ -14,7 +14,7 @@ import org.springframework.web.method.support.ModelAndViewContainer
 class AuthenticatedMemberResolver : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean {
-        return parameter.hasParameterAnnotation(AuthenticatedMember::class.java) &&
+        return parameter.hasParameterAnnotation(Auth::class.java) &&
                 parameter.parameterType == AuthenticatedMemberInfo::class.java
     }
 

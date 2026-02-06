@@ -1,6 +1,6 @@
 package com.moa.controller
 
-import com.moa.common.auth.AuthenticatedMember
+import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthenticatedMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.*
@@ -22,24 +22,24 @@ class OnboardingController(
 ) {
 
     @GetMapping("/status")
-    fun status(@AuthenticatedMember member: AuthenticatedMemberInfo) =
+    fun status(@Auth member: AuthenticatedMemberInfo) =
         ApiResponse.success(onboardingStatusService.getStatus(member.id))
 
     @PatchMapping("/profile")
     fun upsertProfile(
-        @AuthenticatedMember member: AuthenticatedMemberInfo,
+        @Auth member: AuthenticatedMemberInfo,
         @RequestBody @Valid req: ProfileUpsertRequest,
     ) = ApiResponse.success(profileService.upsertProfile(member.id, req))
 
     @PatchMapping("/payroll")
     fun upsertPayroll(
-        @AuthenticatedMember member: AuthenticatedMemberInfo,
+        @Auth member: AuthenticatedMemberInfo,
         @RequestBody @Valid req: PayrollUpsertRequest,
     ) = ApiResponse.success(payrollService.upsert(member.id, req))
 
     @PatchMapping("/work-policy")
     fun upsertWorkPolicy(
-        @AuthenticatedMember member: AuthenticatedMemberInfo,
+        @Auth member: AuthenticatedMemberInfo,
         @RequestBody @Valid req: WorkPolicyUpsertRequest,
     ) = ApiResponse.success(workPolicyService.upsert(member.id, req))
 
@@ -48,12 +48,12 @@ class OnboardingController(
         ApiResponse.success(termsService.getTerms())
 
     @GetMapping("/terms/agreements")
-    fun agreements(@AuthenticatedMember member: AuthenticatedMemberInfo) =
+    fun agreements(@Auth member: AuthenticatedMemberInfo) =
         ApiResponse.success(termsService.getAgreements(member.id))
 
     @PutMapping("/terms/agreements")
     fun agree(
-        @AuthenticatedMember member: AuthenticatedMemberInfo,
+        @Auth member: AuthenticatedMemberInfo,
         @RequestBody @Valid req: TermsAgreementRequest,
     ) = ApiResponse.success(termsService.upsertAgreements(member.id, req))
 }
