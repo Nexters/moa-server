@@ -40,33 +40,16 @@ class TermsService(
         val existingAgreements = termAgreementRepository.findAllByMemberId(memberId)
             .associateBy { it.termCode }
 
-        // Lazy create TermAgreement for new terms
-        val newAgreements = terms
-            .filter { !existingAgreements.containsKey(it.code) }
-            .map { term ->
-                TermAgreement(
-                    memberId = memberId,
-                    termCode = term.code,
-                    agreed = false,
-                )
-            }
-
-        if (newAgreements.isNotEmpty()) {
-            termAgreementRepository.saveAll(newAgreements)
-        }
-
-        val allAgreements = existingAgreements + newAgreements.associateBy { it.termCode }
-
         val responseAgreements = terms
             .sortedWith(compareByDescending<Term> { it.required }.thenBy { it.code })
             .map { term ->
                 TermAgreementDto(
                     code = term.code,
-                    agreed = allAgreements[term.code]?.agreed == true,
+                    agreed = existingAgreements[term.code]?.agreed == true,
                 )
             }
 
-        val hasRequiredTermsAgreed = requiredCodes.all { allAgreements[it]?.agreed == true }
+        val hasRequiredTermsAgreed = requiredCodes.all { existingAgreements[it]?.agreed == true }
 
         return TermsAgreementsResponse(
             agreements = responseAgreements,
