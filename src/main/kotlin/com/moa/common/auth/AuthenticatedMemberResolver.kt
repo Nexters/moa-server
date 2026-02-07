@@ -1,17 +1,21 @@
 package com.moa.common.auth
 
-import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
+import com.moa.common.exception.UnauthorizedException
+import io.jsonwebtoken.ExpiredJwtException
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.support.WebDataBinderFactory
 import org.springframework.web.context.request.NativeWebRequest
-import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 
 @Component
-class AuthenticatedMemberResolver : HandlerMethodArgumentResolver {
+class AuthenticatedMemberResolver(
+    private val jwtTokenProvider: JwtTokenProvider,
+    private val request: HttpServletRequest,
+) : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean {
         return parameter.hasParameterAnnotation(Auth::class.java) &&
@@ -24,11 +28,20 @@ class AuthenticatedMemberResolver : HandlerMethodArgumentResolver {
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
     ): AuthenticatedMemberInfo {
-        val memberId = webRequest.getAttribute(
-            AuthConstants.CURRENT_MEMBER_ID,
-            RequestAttributes.SCOPE_REQUEST
-        ) as? Long ?: throw BadRequestException(ErrorCode.INVALID_ID_TOKEN)
+        val token = jwtTokenProvider.extractToken(request)
+            ?: throw UnauthorizedException(ErrorCode.UNAUTHORIZED)
 
-        return AuthenticatedMemberInfo(id = memberId)
+        try {
+            jwtTokenProvider.validateToken(token)
+
+            val memberId = jwtTokenProvider.getUserIdFromToken(token)
+                ?: throw UnauthorizedException(ErrorCode.UNAUTHORIZED)
+
+            return AuthenticatedMemberInfo(id = memberId)
+        } catch (ex: ExpiredJwtException) {
+            throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)
+        } catch (ex: Exception) {
+            throw UnauthorizedException(ErrorCode.UNAUTHORIZED)
+        }
     }
 }
