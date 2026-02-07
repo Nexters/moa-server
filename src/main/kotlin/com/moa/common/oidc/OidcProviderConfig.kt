@@ -4,10 +4,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "oidc")
 data class OidcProviderConfig(
-    val kakao: ProviderProperties,
+    val kakao: KakaoProviderProperties,
     val apple: AppleProviderProperties,
 ) {
-    data class ProviderProperties(
+    data class KakaoProviderProperties(
         val jwksUri: String,
         val cacheTtlSeconds: Long = 3600,
     )
