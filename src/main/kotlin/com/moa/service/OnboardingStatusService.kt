@@ -52,8 +52,6 @@ class OnboardingStatusService(
                     workdays = it.workdays.sorted(),
                     clockInTime = it.clockInTime,
                     clockOutTime = it.clockOutTime,
-                    breakStartTime = it.breakStartTime,
-                    breakEndTime = it.breakEndTime,
                 )
             }
 

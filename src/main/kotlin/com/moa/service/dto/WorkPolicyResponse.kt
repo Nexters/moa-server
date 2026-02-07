@@ -9,6 +9,4 @@ data class WorkPolicyResponse(
     val workdays: List<Workday>,
     val clockInTime: LocalTime,
     val clockOutTime: LocalTime,
-    val breakStartTime: LocalTime,
-    val breakEndTime: LocalTime,
 )

@@ -13,6 +13,4 @@ data class WorkPolicyUpsertRequest(
 
     val clockInTime: LocalTime,
     val clockOutTime: LocalTime,
-    val breakStartTime: LocalTime,
-    val breakEndTime: LocalTime,
 )

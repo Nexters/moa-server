@@ -18,12 +18,6 @@ class WorkPolicyVersion(
     @Column(nullable = false)
     var clockOutTime: LocalTime,
 
-    @Column(nullable = false)
-    var breakStartTime: LocalTime,
-
-    @Column(nullable = false)
-    var breakEndTime: LocalTime,
-
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
         name = "work_policy_version_workdays",
