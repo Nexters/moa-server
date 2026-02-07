@@ -4,6 +4,6 @@ import jakarta.validation.constraints.NotBlank
 
 data class AppleSignInUpRequest(
     @field:NotBlank
-    val code: String,
+    val idToken: String,
     val fcmDeviceToken: String? = null,
 )

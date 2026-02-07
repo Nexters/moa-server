@@ -15,10 +15,5 @@ data class OidcProviderConfig(
     data class AppleProviderProperties(
         val jwksUri: String,
         val cacheTtlSeconds: Long = 3600,
-        val clientId: String,
-        val teamId: String,
-        val keyId: String,
-        val privateKey: String,
-        val redirectUri: String,
     )
 }

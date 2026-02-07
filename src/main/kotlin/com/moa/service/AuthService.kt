@@ -2,7 +2,6 @@ package com.moa.service
 
 import com.moa.common.auth.JwtTokenProvider
 import com.moa.common.oidc.OidcIdTokenValidator
-import com.moa.common.oidc.apple.AppleOAuthClient
 import com.moa.entity.Member
 import com.moa.entity.ProviderType
 import com.moa.repository.MemberRepository
@@ -18,7 +17,6 @@ class AuthService(
     private val oidcIdTokenValidator: OidcIdTokenValidator,
     private val jwtTokenProvider: JwtTokenProvider,
     private val memberRepository: MemberRepository,
-    private val appleOAuthClient: AppleOAuthClient,
 ) {
 
     @Transactional
@@ -55,8 +53,7 @@ class AuthService(
 
     @Transactional
     fun appleSignInUp(request: AppleSignInUpRequest): AppleSignInUpResponse {
-        val idToken = appleOAuthClient.exchangeCodeForIdToken(request.code)
-        val userInfo = oidcIdTokenValidator.validate(ProviderType.APPLE, idToken)
+        val userInfo = oidcIdTokenValidator.validate(ProviderType.APPLE, request.idToken)
 
         val member = memberRepository.findByProviderAndProviderSubject(
             provider = userInfo.provider,

@@ -22,8 +22,8 @@ class AuthController(
         return ResponseEntity.ok(ApiResponse.success(authService.kakaoSignInUp(kaKaoSignInUpRequest)))
     }
 
-    @PostMapping("/api/oauth/apple/callback")
-    fun appleSignInUp(appleSignInUpRequest: AppleSignInUpRequest): ResponseEntity<ApiResponse<AppleSignInUpResponse>> {
+    @PostMapping("/api/v1/auth/apple")
+    fun appleSignInUp(@RequestBody appleSignInUpRequest: AppleSignInUpRequest): ResponseEntity<ApiResponse<AppleSignInUpResponse>> {
         return ResponseEntity.ok(ApiResponse.success(authService.appleSignInUp(appleSignInUpRequest)))
     }
 }

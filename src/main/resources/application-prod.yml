@@ -25,8 +25,3 @@ oidc:
   apple:
     jwks-uri: ${secret.oauth.apple.jwks-uri}
     cache-ttl-seconds: ${secret.oauth.cache-ttl-seconds}
-    client-id: ${secret.oauth.apple.client-id}
-    team-id: ${secret.oauth.apple.team-id}
-    key-id: ${secret.oauth.apple.key-id}
-    private-key: ${secret.oauth.apple.private-key}
-    redirect-uri: ${secret.oauth.apple.redirect-uri}
