@@ -25,15 +25,11 @@ class WorkPolicyService(
                 effectiveFrom = req.effectiveFrom,
                 clockInTime = req.clockInTime,
                 clockOutTime = req.clockOutTime,
-                breakStartTime = req.breakStartTime,
-                breakEndTime = req.breakEndTime,
                 workdays = req.workdays.toMutableSet(),
             )
 
         version.clockInTime = req.clockInTime
         version.clockOutTime = req.clockOutTime
-        version.breakStartTime = req.breakStartTime
-        version.breakEndTime = req.breakEndTime
         version.workdays = req.workdays.toMutableSet()
         versionRepository.save(version)
 
@@ -42,19 +38,11 @@ class WorkPolicyService(
             workdays = req.workdays.sortedBy { it.dayOfWeek.value },
             clockInTime = req.clockInTime,
             clockOutTime = req.clockOutTime,
-            breakStartTime = req.breakStartTime,
-            breakEndTime = req.breakEndTime,
         )
     }
 
     private fun validateRequest(req: WorkPolicyUpsertRequest) {
         if (!req.clockInTime.isBefore(req.clockOutTime)) {
-            throw BadRequestException(ErrorCode.INVALID_WORK_POLICY_INPUT)
-        }
-        if (!req.breakStartTime.isBefore(req.breakEndTime)) {
-            throw BadRequestException(ErrorCode.INVALID_WORK_POLICY_INPUT)
-        }
-        if (req.breakStartTime.isBefore(req.clockInTime) || req.breakEndTime.isAfter(req.clockOutTime)) {
             throw BadRequestException(ErrorCode.INVALID_WORK_POLICY_INPUT)
         }
         if (req.workdays.isEmpty()) {
