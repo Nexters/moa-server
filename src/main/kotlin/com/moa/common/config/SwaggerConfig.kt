@@ -1,5 +1,6 @@
 package com.moa.common.config
 
+import com.moa.common.auth.Auth
 import com.moa.common.auth.OnboardingAuth
 import io.swagger.v3.oas.models.Components
 import io.swagger.v3.oas.models.OpenAPI
@@ -15,7 +16,9 @@ import org.springframework.context.annotation.Configuration
 class SwaggerConfig {
 
     init {
-        SpringDocUtils.getConfig().addAnnotationsToIgnore(OnboardingAuth::class.java)
+        SpringDocUtils.getConfig()
+            .addAnnotationsToIgnore(OnboardingAuth::class.java)
+            .addAnnotationsToIgnore(Auth::class.java)
     }
 
     @Bean

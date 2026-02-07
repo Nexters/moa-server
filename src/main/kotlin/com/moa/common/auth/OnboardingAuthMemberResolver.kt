@@ -12,7 +12,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 
 @Component
-class OnboardingMemberResolver(
+class OnboardingAuthMemberResolver(
     private val jwtTokenProvider: JwtTokenProvider,
     private val request: HttpServletRequest,
 ) : HandlerMethodArgumentResolver {
@@ -29,19 +29,19 @@ class OnboardingMemberResolver(
         binderFactory: WebDataBinderFactory?,
     ): AuthenticatedMemberInfo {
         val token = jwtTokenProvider.extractToken(request)
-            ?: throw UnauthorizedException(ErrorCode.UNAUTHORIZED)
+            ?: throw UnauthorizedException()
 
         try {
             jwtTokenProvider.validateToken(token)
 
             val memberId = jwtTokenProvider.getUserIdFromToken(token)
-                ?: throw UnauthorizedException(ErrorCode.UNAUTHORIZED)
+                ?: throw UnauthorizedException()
 
             return AuthenticatedMemberInfo(id = memberId)
         } catch (ex: ExpiredJwtException) {
             throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)
         } catch (ex: Exception) {
-            throw UnauthorizedException(ErrorCode.UNAUTHORIZED)
+            throw UnauthorizedException()
         }
     }
 }

@@ -1,5 +1,5 @@
 package com.moa.common.exception
 
 class ForbiddenException(
-    val errorCode: ErrorCode = ErrorCode.FORBIDDEN,
+    val errorCode: ErrorCode,
 ) : RuntimeException(errorCode.message)
