@@ -10,7 +10,7 @@ enum class ErrorCode(
     // 4xx
     BAD_REQUEST("BAD_REQUEST", "잘못된 요청입니다."),
     UNAUTHORIZED("UNAUTHORIZED", "인증되지 않은 사용자입니다"),
-    FORBIDDEN("FORBIDDEN", "권한이 없습니다"),
+    ONBOARDING_INCOMPLETE("ONBOARDING_INCOMPLETE", "온보딩이 완료되지 않았습니다"),
     RESOURCE_NOT_FOUND("RESOURCE_NOT_FOUND", "리소스를 찾을 수 없습니다"),
 
     INVALID_PAYROLL_INPUT("INVALID_PAYROLL_INPUT", "급여 입력값이 유효하지 않습니다"),
