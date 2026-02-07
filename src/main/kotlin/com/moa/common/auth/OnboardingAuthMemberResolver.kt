@@ -19,7 +19,7 @@ class OnboardingAuthMemberResolver(
 
     override fun supportsParameter(parameter: MethodParameter): Boolean {
         return parameter.hasParameterAnnotation(OnboardingAuth::class.java) &&
-                parameter.parameterType == AuthenticatedMemberInfo::class.java
+                parameter.parameterType == AuthMemberInfo::class.java
     }
 
     override fun resolveArgument(
@@ -27,7 +27,7 @@ class OnboardingAuthMemberResolver(
         mavContainer: ModelAndViewContainer?,
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
-    ): AuthenticatedMemberInfo {
+    ): AuthMemberInfo {
         val token = jwtTokenProvider.extractToken(request)
             ?: throw UnauthorizedException()
 
@@ -37,7 +37,7 @@ class OnboardingAuthMemberResolver(
             val memberId = jwtTokenProvider.getUserIdFromToken(token)
                 ?: throw UnauthorizedException()
 
-            return AuthenticatedMemberInfo(id = memberId)
+            return AuthMemberInfo(id = memberId)
         } catch (ex: ExpiredJwtException) {
             throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)
         } catch (ex: Exception) {

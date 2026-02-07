@@ -27,7 +27,7 @@ class AuthMemberResolver(
 
     override fun supportsParameter(parameter: MethodParameter): Boolean {
         return parameter.hasParameterAnnotation(Auth::class.java) &&
-                parameter.parameterType == AuthenticatedMemberInfo::class.java
+                parameter.parameterType == AuthMemberInfo::class.java
     }
 
     override fun resolveArgument(
@@ -35,11 +35,17 @@ class AuthMemberResolver(
         mavContainer: ModelAndViewContainer?,
         webRequest: NativeWebRequest,
         binderFactory: WebDataBinderFactory?,
-    ): AuthenticatedMemberInfo {
+    ): AuthMemberInfo {
+        val memberId = resolveMemberId()
+        validateOnboardingCompleted(memberId)
+        return AuthMemberInfo(id = memberId)
+    }
+
+    private fun resolveMemberId(): Long {
         val token = jwtTokenProvider.extractToken(request)
             ?: throw UnauthorizedException()
 
-        val memberId = try {
+        return try {
             jwtTokenProvider.validateToken(token)
             jwtTokenProvider.getUserIdFromToken(token)
         } catch (ex: ExpiredJwtException) {
@@ -47,24 +53,44 @@ class AuthMemberResolver(
         } catch (ex: Exception) {
             throw UnauthorizedException()
         } ?: throw UnauthorizedException()
+    }
 
+    private fun validateOnboardingCompleted(memberId: Long) {
         val today = LocalDate.now()
 
-        val profileCompleted = profileRepository.findByMemberId(memberId)
+        val profileCompleted = isProfileCompleted(memberId)
+        val payrollCompleted = isPayrollCompleted(memberId, today)
+        val workPolicyCompleted = isWorkPolicyCompleted(memberId, today)
+        val hasRequiredTermsAgreed = hasRequiredTermsAgreed(memberId)
+
+        val onboardingCompleted =
+            profileCompleted && payrollCompleted && workPolicyCompleted && hasRequiredTermsAgreed
+
+        if (!onboardingCompleted) {
+            throw ForbiddenException(ErrorCode.ONBOARDING_INCOMPLETE)
+        }
+    }
+
+    private fun isProfileCompleted(memberId: Long): Boolean {
+        return profileRepository.findByMemberId(memberId)
             ?.let { it.nickname.isNotBlank() && it.workplace.isNotBlank() }
             ?: false
+    }
 
-        val payrollCompleted =
-            payrollVersionRepository
-                .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today) != null
+    private fun isPayrollCompleted(memberId: Long, today: LocalDate): Boolean {
+        return payrollVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today) != null
+    }
 
-        val workPolicyCompleted =
-            workPolicyVersionRepository
-                .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
-                ?.workdays
-                ?.isNotEmpty()
-                ?: false
+    private fun isWorkPolicyCompleted(memberId: Long, today: LocalDate): Boolean {
+        return workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
+            ?.workdays
+            ?.isNotEmpty()
+            ?: false
+    }
 
+    private fun hasRequiredTermsAgreed(memberId: Long): Boolean {
         val requiredCodes = termRepository.findAll()
             .asSequence()
             .filter { it.required }
@@ -74,15 +100,6 @@ class AuthMemberResolver(
         val agreements = termAgreementRepository.findAllByMemberId(memberId)
             .associate { it.termCode to it.agreed }
 
-        val hasRequiredTermsAgreed = requiredCodes.all { agreements[it] == true }
-
-        val onboardingCompleted =
-            profileCompleted && payrollCompleted && workPolicyCompleted && hasRequiredTermsAgreed
-
-        if (!onboardingCompleted) {
-            throw ForbiddenException(ErrorCode.ONBOARDING_INCOMPLETE)
-        }
-
-        return AuthenticatedMemberInfo(id = memberId)
+        return requiredCodes.all { agreements[it] == true }
     }
 }

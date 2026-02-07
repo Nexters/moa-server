@@ -1,6 +1,6 @@
 package com.moa.controller
 
-import com.moa.common.auth.AuthenticatedMemberInfo
+import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.auth.OnboardingAuth
 import com.moa.common.response.ApiResponse
 import com.moa.service.*
@@ -22,24 +22,24 @@ class OnboardingController(
 ) {
 
     @GetMapping("/status")
-    fun status(@OnboardingAuth member: AuthenticatedMemberInfo) =
+    fun status(@OnboardingAuth member: AuthMemberInfo) =
         ApiResponse.success(onboardingStatusService.getStatus(member.id))
 
     @PatchMapping("/profile")
     fun upsertProfile(
-        @OnboardingAuth member: AuthenticatedMemberInfo,
+        @OnboardingAuth member: AuthMemberInfo,
         @RequestBody @Valid req: ProfileUpsertRequest,
     ) = ApiResponse.success(profileService.upsertProfile(member.id, req))
 
     @PatchMapping("/payroll")
     fun upsertPayroll(
-        @OnboardingAuth member: AuthenticatedMemberInfo,
+        @OnboardingAuth member: AuthMemberInfo,
         @RequestBody @Valid req: PayrollUpsertRequest,
     ) = ApiResponse.success(payrollService.upsert(member.id, req))
 
     @PatchMapping("/work-policy")
     fun upsertWorkPolicy(
-        @OnboardingAuth member: AuthenticatedMemberInfo,
+        @OnboardingAuth member: AuthMemberInfo,
         @RequestBody @Valid req: WorkPolicyUpsertRequest,
     ) = ApiResponse.success(workPolicyService.upsert(member.id, req))
 
@@ -48,12 +48,12 @@ class OnboardingController(
         ApiResponse.success(termsService.getTerms())
 
     @GetMapping("/terms/agreements")
-    fun agreements(@OnboardingAuth member: AuthenticatedMemberInfo) =
+    fun agreements(@OnboardingAuth member: AuthMemberInfo) =
         ApiResponse.success(termsService.getAgreements(member.id))
 
     @PutMapping("/terms/agreements")
     fun agree(
-        @OnboardingAuth member: AuthenticatedMemberInfo,
+        @OnboardingAuth member: AuthMemberInfo,
         @RequestBody @Valid req: TermsAgreementRequest,
     ) = ApiResponse.success(termsService.upsertAgreements(member.id, req))
 }
