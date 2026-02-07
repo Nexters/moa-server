@@ -2,6 +2,8 @@ package com.moa.controller
 
 import com.moa.common.response.ApiResponse
 import com.moa.service.AuthService
+import com.moa.service.dto.AppleSignInUpRequest
+import com.moa.service.dto.AppleSignInUpResponse
 import com.moa.service.dto.KaKaoSignInUpRequest
 import com.moa.service.dto.KakaoSignInUpResponse
 import jakarta.validation.Valid
@@ -18,5 +20,10 @@ class AuthController(
     @PostMapping("/api/v1/auth/kakao")
     fun kakaoSignInUp(@RequestBody @Valid kaKaoSignInUpRequest: KaKaoSignInUpRequest): ResponseEntity<ApiResponse<KakaoSignInUpResponse>> {
         return ResponseEntity.ok(ApiResponse.success(authService.kakaoSignInUp(kaKaoSignInUpRequest)))
+    }
+
+    @PostMapping("/api/oauth/apple/callback")
+    fun appleSignInUp(appleSignInUpRequest: AppleSignInUpRequest): ResponseEntity<ApiResponse<AppleSignInUpResponse>> {
+        return ResponseEntity.ok(ApiResponse.success(authService.appleSignInUp(appleSignInUpRequest)))
     }
 }

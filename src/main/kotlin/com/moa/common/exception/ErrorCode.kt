@@ -20,4 +20,5 @@ enum class ErrorCode(
     INVALID_ID_TOKEN("INVALID_ID_TOKEN", "유효하지 않은 ID 토큰입니다"),
     INVALID_PROVIDER("INVALID_PROVIDER", "유효하지 않는 로그인 방식입니다."),
     EXPIRED_TOKEN("EXPIRED_TOKEN", "토큰이 만료되었습니다"),
+    APPLE_TOKEN_EXCHANGE_FAILED("APPLE_TOKEN_EXCHANGE_FAILED", "Apple 토큰 교환에 실패했습니다"),
 }
