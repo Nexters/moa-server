@@ -15,29 +15,27 @@ class OidcIdTokenValidator(
     private val objectMapper: ObjectMapper
 ) {
     fun validate(provider: ProviderType, idToken: String): OidcUserInfo {
-        val providerProperties = getProviderProperties(provider)
-
-        return validateToken(idToken, providerProperties, provider)
+        return validateToken(idToken, provider)
     }
 
-    private fun getProviderProperties(provider: ProviderType): OidcProviderConfig.ProviderProperties {
+    private fun getJwksConfig(provider: ProviderType): Pair<String, Long> {
         return when (provider) {
-            ProviderType.KAKAO -> config.kakao
-            else -> throw UnauthorizedException(ErrorCode.INVALID_PROVIDER)
+            ProviderType.KAKAO -> config.kakao.jwksUri to config.kakao.cacheTtlSeconds
+            ProviderType.APPLE -> config.apple.jwksUri to config.apple.cacheTtlSeconds
         }
     }
 
     private fun validateToken(
         idToken: String,
-        providerConfig: OidcProviderConfig.ProviderProperties,
         provider: ProviderType
     ): OidcUserInfo {
+        val (jwksUri, cacheTtlSeconds) = getJwksConfig(provider)
         val kid = extractKid(idToken)
 
         val publicKey = publicKeyCache.getPublicKey(
-            jwksUri = providerConfig.jwksUri,
+            jwksUri = jwksUri,
             kid = kid,
-            ttlSeconds = providerConfig.cacheTtlSeconds,
+            ttlSeconds = cacheTtlSeconds,
         )
 
         val claims = try {

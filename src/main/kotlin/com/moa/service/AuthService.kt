@@ -5,6 +5,8 @@ import com.moa.common.oidc.OidcIdTokenValidator
 import com.moa.entity.Member
 import com.moa.entity.ProviderType
 import com.moa.repository.MemberRepository
+import com.moa.service.dto.AppleSignInUpRequest
+import com.moa.service.dto.AppleSignInUpResponse
 import com.moa.service.dto.KaKaoSignInUpRequest
 import com.moa.service.dto.KakaoSignInUpResponse
 import org.springframework.stereotype.Service
@@ -45,6 +47,38 @@ class AuthService(
         )
 
         return KakaoSignInUpResponse(
+            registerToken,
+        )
+    }
+
+    @Transactional
+    fun appleSignInUp(request: AppleSignInUpRequest): AppleSignInUpResponse {
+        val userInfo = oidcIdTokenValidator.validate(ProviderType.APPLE, request.idToken)
+
+        val member = memberRepository.findByProviderAndProviderSubject(
+            provider = userInfo.provider,
+            providerSubject = userInfo.subject,
+        )
+
+        member?.let {
+            return AppleSignInUpResponse(
+                jwtTokenProvider.createAccessToken(member.id)
+            )
+        }
+
+        val registeredMember = memberRepository.save(
+            Member(
+                provider = ProviderType.APPLE,
+                providerSubject = userInfo.subject,
+                profile = null,
+            )
+        )
+
+        val registerToken = jwtTokenProvider.createAccessToken(
+            registeredMember.id
+        )
+
+        return AppleSignInUpResponse(
             registerToken,
         )
     }
