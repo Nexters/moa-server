@@ -12,13 +12,13 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver
 import org.springframework.web.method.support.ModelAndViewContainer
 
 @Component
-class AuthenticatedMemberResolver(
+class OnboardingMemberResolver(
     private val jwtTokenProvider: JwtTokenProvider,
     private val request: HttpServletRequest,
 ) : HandlerMethodArgumentResolver {
 
     override fun supportsParameter(parameter: MethodParameter): Boolean {
-        return parameter.hasParameterAnnotation(Auth::class.java) &&
+        return parameter.hasParameterAnnotation(OnboardingAuth::class.java) &&
                 parameter.parameterType == AuthenticatedMemberInfo::class.java
     }
 

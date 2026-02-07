@@ -2,7 +2,7 @@ package com.moa.common.auth
 
 @Target(AnnotationTarget.VALUE_PARAMETER)
 @Retention(AnnotationRetention.RUNTIME)
-annotation class Auth
+annotation class OnboardingAuth
 
 data class AuthenticatedMemberInfo(
     val id: Long,
