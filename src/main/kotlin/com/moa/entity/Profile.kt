@@ -11,7 +11,7 @@ class Profile(
     var nickname: String,
 
     @Column(nullable = false)
-    var workplaceName: String,
+    var workplace: String,
 ) : BaseEntity() {
 
     @Id
