@@ -4,6 +4,7 @@ import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
 import com.moa.entity.DailyWorkSchedule
+import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.WorkPolicyVersionRepository
 import com.moa.service.dto.WorkdayEditRequest
@@ -23,7 +24,7 @@ class WorkdayService(
     @Transactional(readOnly = true)
     fun getSchedule(memberId: Long, date: LocalDate): WorkdayResponse {
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
-        workSchedule?.let {
+        if (workSchedule != null) {
             return WorkdayResponse(
                 date = date,
                 clockInTime = workSchedule.clockInTime,
@@ -31,9 +32,7 @@ class WorkdayService(
             )
         }
 
-        val policy = workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+        val policy = findEffectivePolicyForWorkday(memberId, date)
 
         return WorkdayResponse(
             date = date,
@@ -71,21 +70,12 @@ class WorkdayService(
     fun patchClockOut(memberId: Long, date: LocalDate, req: WorkdayEditRequest): WorkdayResponse {
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
             ?: run {
-                val workPolicy =
-                    workPolicyVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                        memberId,
-                        date
-                    ) ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
-
-                workPolicy.takeIf { policy ->
-                    policy.workdays.any { it.dayOfWeek.equals(date.dayOfWeek) }
-                } ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
-
+                val policy = findEffectivePolicyForWorkday(memberId, date)
                 DailyWorkSchedule(
                     memberId = memberId,
                     date = date,
-                    clockInTime = workPolicy.clockInTime,
-                    clockOutTime = workPolicy.clockOutTime,
+                    clockInTime = policy.clockInTime,
+                    clockOutTime = policy.clockOutTime,
                 )
             }
 
@@ -101,6 +91,18 @@ class WorkdayService(
             clockInTime = saved.clockInTime,
             clockOutTime = saved.clockOutTime,
         )
+    }
+
+    private fun findEffectivePolicyForWorkday(memberId: Long, date: LocalDate): WorkPolicyVersion {
+        val policy = workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
+            ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+
+        if (policy.workdays.none { it.dayOfWeek == date.dayOfWeek }) {
+            throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+        }
+
+        return policy
     }
 
     private fun validateClockTimes(clockInTime: LocalTime, clockOutTime: LocalTime) {
