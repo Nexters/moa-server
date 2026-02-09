@@ -77,6 +77,10 @@ class WorkdayService(
                         date
                     ) ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
 
+                workPolicy.takeIf { policy ->
+                    policy.workdays.any { it.dayOfWeek.equals(date.dayOfWeek) }
+                } ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+
                 DailyWorkSchedule(
                     memberId = memberId,
                     date = date,
