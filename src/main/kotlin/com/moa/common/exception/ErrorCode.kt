@@ -15,6 +15,7 @@ enum class ErrorCode(
 
     INVALID_PAYROLL_INPUT("INVALID_PAYROLL_INPUT", "급여 입력값이 유효하지 않습니다"),
     INVALID_WORK_POLICY_INPUT("INVALID_WORK_POLICY_INPUT", "근무정책 입력값이 유효하지 않습니다"),
+    WORKDAY_NOT_FOUND("WORKDAY_NOT_FOUND", "해당 날짜의 근무 정보를 찾을 수 없습니다"),
     REQUIRED_TERMS_MUST_BE_AGREED("REQUIRED_TERMS_MUST_BE_AGREED", "필수 약관은 동의해야 합니다"),
 
     INVALID_ID_TOKEN("INVALID_ID_TOKEN", "유효하지 않은 ID 토큰입니다"),
