@@ -96,10 +96,10 @@ class WorkdayService(
     private fun findEffectivePolicyForWorkday(memberId: Long, date: LocalDate): WorkPolicyVersion {
         val policy = workPolicyVersionRepository
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+            ?: throw NotFoundException()
 
         if (policy.workdays.none { it.dayOfWeek == date.dayOfWeek }) {
-            throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+            throw NotFoundException()
         }
 
         return policy
