@@ -14,6 +14,16 @@ class ProfileService(
     private val profileRepository: ProfileRepository,
 ) {
 
+    @Transactional(readOnly = true)
+    fun getProfile(memberId: Long): ProfileResponse {
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+        )
+    }
+
     @Transactional
     fun upsertProfile(memberId: Long, req: OnboardingProfileUpsertRequest): ProfileResponse {
         val nickname = req.nickname

@@ -14,6 +14,10 @@ class WorkPolicyController(
     private val workPolicyService: WorkPolicyService,
 ) {
 
+    @GetMapping
+    fun getWorkPolicy(@Auth member: AuthMemberInfo) =
+        ApiResponse.success(workPolicyService.getCurrent(member.id))
+
     @PatchMapping
     fun upsertWorkPolicy(
         @Auth member: AuthMemberInfo,

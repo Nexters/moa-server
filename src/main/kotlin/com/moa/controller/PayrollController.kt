@@ -14,6 +14,10 @@ class PayrollController(
     private val payrollService: PayrollService,
 ) {
 
+    @GetMapping
+    fun getPayroll(@Auth member: AuthMemberInfo) =
+        ApiResponse.success(payrollService.getCurrent(member.id))
+
     @PatchMapping
     fun upsertPayroll(
         @Auth member: AuthMemberInfo,

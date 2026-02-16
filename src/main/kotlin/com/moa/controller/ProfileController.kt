@@ -14,6 +14,10 @@ class ProfileController(
     private val profileService: ProfileService,
 ) {
 
+    @GetMapping
+    fun getProfile(@Auth member: AuthMemberInfo) =
+        ApiResponse.success(profileService.getProfile(member.id))
+
     @PatchMapping("/nickname")
     fun updateNickname(
         @Auth member: AuthMemberInfo,

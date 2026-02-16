@@ -2,12 +2,14 @@ package com.moa.service
 
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
+import com.moa.common.exception.NotFoundException
 import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.WorkPolicyVersionRepository
 import com.moa.service.dto.WorkPolicyResponse
 import com.moa.service.dto.WorkPolicyUpsertRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 @Service
 class WorkPolicyService(
@@ -15,14 +17,11 @@ class WorkPolicyService(
 ) {
 
     @Transactional
-    fun upsert(memberId: Long, req: WorkPolicyUpsertRequest): WorkPolicyResponse {
-
-        validateRequest(req)
-
-        val version = versionRepository.findByMemberIdAndEffectiveFrom(memberId, req.effectiveFrom)
+    fun upsert(memberId: Long, req: WorkPolicyUpsertRequest, today: LocalDate = LocalDate.now()): WorkPolicyResponse {
+        val version = versionRepository.findByMemberIdAndEffectiveFrom(memberId, today)
             ?: WorkPolicyVersion(
                 memberId = memberId,
-                effectiveFrom = req.effectiveFrom,
+                effectiveFrom = today,
                 clockInTime = req.clockInTime,
                 clockOutTime = req.clockOutTime,
                 workdays = req.workdays.toMutableSet(),
@@ -41,12 +40,17 @@ class WorkPolicyService(
         )
     }
 
-    private fun validateRequest(req: WorkPolicyUpsertRequest) {
-        if (!req.clockInTime.isBefore(req.clockOutTime)) {
-            throw BadRequestException(ErrorCode.INVALID_WORK_POLICY_INPUT)
-        }
-        if (req.workdays.isEmpty()) {
-            throw BadRequestException(ErrorCode.INVALID_WORK_POLICY_INPUT)
-        }
+    @Transactional(readOnly = true)
+    fun getCurrent(memberId: Long, today: LocalDate = LocalDate.now()): WorkPolicyResponse {
+        val version = versionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
+            ?: throw NotFoundException()
+
+        return WorkPolicyResponse(
+            effectiveFrom = version.effectiveFrom,
+            workdays = version.workdays.sortedBy { it.dayOfWeek.value },
+            clockInTime = version.clockInTime,
+            clockOutTime = version.clockOutTime,
+        )
     }
 }
