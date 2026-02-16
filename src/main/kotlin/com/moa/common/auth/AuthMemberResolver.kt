@@ -73,7 +73,7 @@ class AuthMemberResolver(
 
     private fun isProfileCompleted(memberId: Long): Boolean {
         return profileRepository.findByMemberId(memberId)
-            ?.let { it.nickname.isNotBlank() && it.workplace.isNotBlank() }
+            ?.let { it.nickname.isNotBlank() }
             ?: false
     }
 

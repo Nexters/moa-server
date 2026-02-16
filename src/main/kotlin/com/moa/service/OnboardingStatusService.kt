@@ -22,7 +22,7 @@ class OnboardingStatusService(
     fun getStatus(memberId: Long, today: LocalDate = LocalDate.now()): OnboardingStatusResponse {
         // 프로필 완료 여부
         val profile = profileRepository.findByMemberId(memberId)
-            ?.takeIf { it.nickname.isNotBlank() && it.workplace.isNotBlank() }
+            ?.takeIf { it.nickname.isNotBlank() }
             ?.let {
                 ProfileResponse(
                     nickname = it.nickname,
