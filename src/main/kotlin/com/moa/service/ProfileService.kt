@@ -1,7 +1,9 @@
 package com.moa.service
 
+import com.moa.common.exception.NotFoundException
 import com.moa.entity.Profile
 import com.moa.repository.ProfileRepository
+import com.moa.service.dto.NicknameUpdateRequest
 import com.moa.service.dto.ProfileResponse
 import com.moa.service.dto.OnboardingProfileUpsertRequest
 import org.springframework.stereotype.Service
@@ -24,6 +26,19 @@ class ProfileService(
                 nickname = nickname,
             )
         )
+
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+        )
+    }
+
+    @Transactional
+    fun updateNickname(memberId: Long, req: NicknameUpdateRequest): ProfileResponse {
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+
+        profile.nickname = req.nickname
 
         return ProfileResponse(
             nickname = profile.nickname,
