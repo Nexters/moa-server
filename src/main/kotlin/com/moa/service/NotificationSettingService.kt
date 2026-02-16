@@ -1,8 +1,9 @@
 package com.moa.service
 
+import com.moa.common.exception.BadRequestException
+import com.moa.common.exception.ErrorCode
 import com.moa.entity.NotificationSetting
 import com.moa.entity.Term
-import com.moa.entity.TermAgreement
 import com.moa.repository.NotificationSettingRepository
 import com.moa.repository.TermAgreementRepository
 import com.moa.service.dto.NotificationSettingResponse
@@ -38,19 +39,12 @@ class NotificationSettingService(
     @Transactional
     fun updatePromotionNotification(memberId: Long, enabled: Boolean): NotificationSettingResponse {
         val setting = getOrCreate(memberId)
-        setting.promotionNotificationEnabled = enabled
 
-        termAgreementRepository.findByMemberIdAndTermCode(memberId, Term.MARKETING)
-            ?.let { existing ->
-                existing.agreed = true
-            }
-            ?: termAgreementRepository.save(
-                TermAgreement(
-                    memberId = memberId,
-                    termCode = Term.MARKETING,
-                    agreed = true
-                )
-            )
+        if (enabled) {
+            validateMarketingAgreed(memberId)
+        }
+
+        setting.promotionNotificationEnabled = enabled
 
         return NotificationSettingResponse.from(setting)
     }
@@ -58,5 +52,13 @@ class NotificationSettingService(
     private fun getOrCreate(memberId: Long): NotificationSetting {
         return notificationSettingRepository.findByMemberId(memberId)
             ?: notificationSettingRepository.save(NotificationSetting(memberId = memberId))
+    }
+
+    private fun validateMarketingAgreed(memberId: Long) {
+        val agreement = termAgreementRepository.findByMemberIdAndTermCode(memberId, Term.MARKETING)
+
+        if (agreement == null || !agreement.agreed) {
+            throw BadRequestException(ErrorCode.REQUIRED_MARKETING_TERM)
+        }
     }
 }
