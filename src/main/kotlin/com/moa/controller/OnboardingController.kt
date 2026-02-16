@@ -5,7 +5,7 @@ import com.moa.common.auth.OnboardingAuth
 import com.moa.common.response.ApiResponse
 import com.moa.service.*
 import com.moa.service.dto.PayrollUpsertRequest
-import com.moa.service.dto.ProfileUpsertRequest
+import com.moa.service.dto.OnboardingProfileUpsertRequest
 import com.moa.service.dto.TermsAgreementRequest
 import com.moa.service.dto.WorkPolicyUpsertRequest
 import jakarta.validation.Valid
@@ -28,7 +28,7 @@ class OnboardingController(
     @PatchMapping("/profile")
     fun upsertProfile(
         @OnboardingAuth member: AuthMemberInfo,
-        @RequestBody @Valid req: ProfileUpsertRequest,
+        @RequestBody @Valid req: OnboardingProfileUpsertRequest,
     ) = ApiResponse.success(profileService.upsertProfile(member.id, req))
 
     @PatchMapping("/payroll")

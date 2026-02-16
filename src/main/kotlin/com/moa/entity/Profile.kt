@@ -10,8 +10,8 @@ class Profile(
     @Column(nullable = false)
     var nickname: String,
 
-    @Column(nullable = false)
-    var workplace: String,
+    @Column(nullable = true)
+    var workplace: String? = null,
 ) : BaseEntity() {
 
     @Id
