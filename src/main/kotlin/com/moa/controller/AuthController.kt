@@ -6,12 +6,14 @@ import com.moa.service.dto.AppleSignInUpRequest
 import com.moa.service.dto.AppleSignInUpResponse
 import com.moa.service.dto.KaKaoSignInUpRequest
 import com.moa.service.dto.KakaoSignInUpResponse
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RestController
 
+@Tag(name = "Auth", description = "인증 API (카카오/애플 소셜 로그인)")
 @RestController
 class AuthController(
     private val authService: AuthService,

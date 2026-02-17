@@ -6,10 +6,12 @@ import com.moa.common.response.ApiResponse
 import com.moa.service.WorkdayService
 import com.moa.service.dto.WorkdayEditRequest
 import com.moa.service.dto.WorkdayUpsertRequest
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
+@Tag(name = "Workday", description = "근무일/스케줄 API (출퇴근 일정 조회·등록·수정)")
 @RestController
 @RequestMapping("/api/v1/workdays")
 class WorkdayController(

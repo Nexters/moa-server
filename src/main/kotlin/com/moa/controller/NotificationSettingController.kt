@@ -5,8 +5,10 @@ import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.NotificationSettingService
 import com.moa.service.dto.NotificationSettingUpdateRequest
+import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.*
 
+@Tag(name = "NotificationSetting", description = "알림 설정 API (근무/급여일/프로모션 알림)")
 @RestController
 @RequestMapping("/api/v1/settings/notification")
 class NotificationSettingController(

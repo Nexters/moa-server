@@ -8,9 +8,11 @@ import com.moa.service.dto.OnboardingPayrollUpsertRequest
 import com.moa.service.dto.OnboardingProfileUpsertRequest
 import com.moa.service.dto.TermsAgreementRequest
 import com.moa.service.dto.WorkPolicyUpsertRequest
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
+@Tag(name = "Onboarding", description = "온보딩 API (최초 가입 시 프로필/급여/근무정책/약관 설정)")
 @RestController
 @RequestMapping("/api/v1/onboarding")
 class OnboardingController(
