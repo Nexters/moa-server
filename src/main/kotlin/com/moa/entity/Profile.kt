@@ -12,6 +12,9 @@ class Profile(
 
     @Column(nullable = true)
     var workplace: String? = null,
+
+    @Column(nullable = false)
+    var paydayDay: Int = 25,
 ) : BaseEntity() {
 
     @Id

@@ -4,10 +4,12 @@ import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.PayrollService
-import com.moa.service.dto.PayrollUpsertRequest
+import com.moa.service.dto.OnboardingPayrollUpsertRequest
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
+@Tag(name = "Payroll", description = "급여 정보 API")
 @RestController
 @RequestMapping("/api/v1/payroll")
 class PayrollController(
@@ -21,6 +23,6 @@ class PayrollController(
     @PatchMapping
     fun upsertPayroll(
         @Auth member: AuthMemberInfo,
-        @RequestBody @Valid req: PayrollUpsertRequest,
+        @RequestBody @Valid req: OnboardingPayrollUpsertRequest,
     ) = ApiResponse.success(payrollService.upsert(member.id, req))
 }

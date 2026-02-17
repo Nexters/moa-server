@@ -27,6 +27,7 @@ class OnboardingStatusService(
                 ProfileResponse(
                     nickname = it.nickname,
                     workplace = it.workplace,
+                    paydayDay = it.paydayDay,
                 )
             }
 
@@ -38,7 +39,6 @@ class OnboardingStatusService(
                     effectiveFrom = it.effectiveFrom,
                     salaryInputType = it.salaryInputType,
                     salaryAmount = it.salaryAmount,
-                    paydayDay = it.paydayDay,
                 )
             }
 
