@@ -55,9 +55,7 @@ class AuthMemberResolver(
         } ?: throw UnauthorizedException()
     }
 
-    private fun validateOnboardingCompleted(memberId: Long) {
-        val today = LocalDate.now()
-
+    private fun validateOnboardingCompleted(memberId: Long,  today: LocalDate = LocalDate.now()) {
         val profileCompleted = isProfileCompleted(memberId)
         val payrollCompleted = isPayrollCompleted(memberId, today)
         val workPolicyCompleted = isWorkPolicyCompleted(memberId, today)
