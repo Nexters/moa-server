@@ -1,11 +1,14 @@
 package com.moa.service
 
+import com.moa.common.exception.BadRequestException
+import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
 import com.moa.entity.Profile
 import com.moa.repository.ProfileRepository
 import com.moa.service.dto.NicknameUpdateRequest
 import com.moa.service.dto.ProfileResponse
 import com.moa.service.dto.WorkplaceUpdateRequest
+import com.moa.service.dto.PaydayUpdateRequest
 import com.moa.service.dto.OnboardingProfileUpsertRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -22,6 +25,7 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
         )
     }
 
@@ -41,6 +45,7 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
         )
     }
 
@@ -54,6 +59,7 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
         )
     }
 
@@ -67,6 +73,25 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
+        )
+    }
+
+    @Transactional
+    fun updatePayday(memberId: Long, req: PaydayUpdateRequest): ProfileResponse {
+        if (req.paydayDay !in 1..31) {
+            throw BadRequestException(ErrorCode.INVALID_PAYDAY_INPUT)
+        }
+
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+
+        profile.paydayDay = req.paydayDay
+
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
         )
     }
 }

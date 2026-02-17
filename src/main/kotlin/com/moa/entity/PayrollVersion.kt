@@ -17,9 +17,6 @@ class PayrollVersion(
 
     @Column(nullable = false)
     var salaryAmount: Long,
-
-    @Column(nullable = false)
-    var paydayDay: Int = 25,
 ) : BaseEntity() {
 
     @Id

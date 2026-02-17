@@ -9,7 +9,7 @@ enum class ErrorCode(
 
     // 400
     BAD_REQUEST("BAD_REQUEST", "잘못된 요청입니다."),
-    INVALID_PAYROLL_INPUT("INVALID_PAYROLL_INPUT", "급여 입력값이 유효하지 않습니다"),
+    INVALID_PAYDAY_INPUT("INVALID_PAYDAY_INPUT", "급여일 입력값이 유효하지 않습니다"),
     INVALID_WORK_POLICY_INPUT("INVALID_WORK_POLICY_INPUT", "근무정책 입력값이 유효하지 않습니다"),
     REQUIRED_TERMS_MUST_BE_AGREED("REQUIRED_TERMS_MUST_BE_AGREED", "필수 약관은 동의해야 합니다"),
     REQUIRED_MARKETING_TERM("REQUIRED_MARKETING_TERM", "마케팅 약관 동의가 필요합니다."),

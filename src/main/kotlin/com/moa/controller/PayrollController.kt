@@ -4,7 +4,7 @@ import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.PayrollService
-import com.moa.service.dto.PayrollUpsertRequest
+import com.moa.service.dto.OnboardingPayrollUpsertRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
@@ -21,6 +21,6 @@ class PayrollController(
     @PatchMapping
     fun upsertPayroll(
         @Auth member: AuthMemberInfo,
-        @RequestBody @Valid req: PayrollUpsertRequest,
+        @RequestBody @Valid req: OnboardingPayrollUpsertRequest,
     ) = ApiResponse.success(payrollService.upsert(member.id, req))
 }

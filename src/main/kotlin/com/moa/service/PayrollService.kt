@@ -6,7 +6,7 @@ import com.moa.common.exception.NotFoundException
 import com.moa.entity.PayrollVersion
 import com.moa.repository.PayrollVersionRepository
 import com.moa.service.dto.PayrollResponse
-import com.moa.service.dto.PayrollUpsertRequest
+import com.moa.service.dto.OnboardingPayrollUpsertRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -17,28 +17,18 @@ class PayrollService(
 ) {
 
     @Transactional
-    fun upsert(memberId: Long, req: PayrollUpsertRequest, today: LocalDate = LocalDate.now()): PayrollResponse {
-        val salaryInputType = req.salaryInputType
-        val salaryAmount = req.salaryAmount
-        val paydayDay = req.paydayDay ?: 25
-
-        if (paydayDay !in 1..31) {
-            throw BadRequestException(ErrorCode.INVALID_PAYROLL_INPUT)
-        }
-
+    fun upsert(memberId: Long, req: OnboardingPayrollUpsertRequest, today: LocalDate = LocalDate.now()): PayrollResponse {
         val saved = payrollVersionRepository.findByMemberIdAndEffectiveFrom(memberId, today)
             ?.apply {
-                this.salaryInputType = salaryInputType
-                this.salaryAmount = salaryAmount
-                this.paydayDay = paydayDay
+                this.salaryInputType = req.salaryInputType
+                this.salaryAmount = req.salaryAmount
             }
             ?: payrollVersionRepository.save(
                 PayrollVersion(
                     memberId = memberId,
                     effectiveFrom = today,
-                    salaryInputType = salaryInputType,
-                    salaryAmount = salaryAmount,
-                    paydayDay = paydayDay,
+                    salaryInputType = req.salaryInputType,
+                    salaryAmount = req.salaryAmount,
                 )
             )
 
@@ -46,7 +36,6 @@ class PayrollService(
             effectiveFrom = saved.effectiveFrom,
             salaryInputType = saved.salaryInputType,
             salaryAmount = saved.salaryAmount,
-            paydayDay = saved.paydayDay,
         )
     }
 
@@ -59,7 +48,6 @@ class PayrollService(
             effectiveFrom = version.effectiveFrom,
             salaryInputType = version.salaryInputType,
             salaryAmount = version.salaryAmount,
-            paydayDay = version.paydayDay,
         )
     }
 }
