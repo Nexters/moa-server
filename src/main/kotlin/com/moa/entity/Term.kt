@@ -17,4 +17,8 @@ class Term(
 
     @Column(nullable = false)
     val contentUrl: String,
-)
+) {
+    companion object {
+        const val MARKETING = "MARKETING"
+    }
+}
