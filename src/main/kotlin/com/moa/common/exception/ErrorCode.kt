@@ -17,6 +17,7 @@ enum class ErrorCode(
     INVALID_WORK_POLICY_INPUT("INVALID_WORK_POLICY_INPUT", "근무정책 입력값이 유효하지 않습니다"),
     WORKDAY_NOT_FOUND("WORKDAY_NOT_FOUND", "해당 날짜의 근무 정보를 찾을 수 없습니다"),
     REQUIRED_TERMS_MUST_BE_AGREED("REQUIRED_TERMS_MUST_BE_AGREED", "필수 약관은 동의해야 합니다"),
+    REQUIRED_MARKETING_TERM("REQUIRED_MARKETING_TERM", "마케팅 약관 동의가 필요합니다."),
 
     INVALID_ID_TOKEN("INVALID_ID_TOKEN", "유효하지 않은 ID 토큰입니다"),
     EXPIRED_TOKEN("EXPIRED_TOKEN", "토큰이 만료되었습니다"),
