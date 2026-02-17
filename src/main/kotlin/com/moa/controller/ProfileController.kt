@@ -5,6 +5,7 @@ import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.ProfileService
 import com.moa.service.dto.NicknameUpdateRequest
+import com.moa.service.dto.WorkplaceUpdateRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
@@ -23,4 +24,10 @@ class ProfileController(
         @Auth member: AuthMemberInfo,
         @RequestBody @Valid req: NicknameUpdateRequest,
     ) = ApiResponse.success(profileService.updateNickname(member.id, req))
+
+    @PatchMapping("/workplace")
+    fun updateWorkplace(
+        @Auth member: AuthMemberInfo,
+        @RequestBody @Valid req: WorkplaceUpdateRequest,
+    ) = ApiResponse.success(profileService.updateWorkplace(member.id, req))
 }
