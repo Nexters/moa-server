@@ -3,6 +3,7 @@ package com.moa.service
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
 import com.moa.entity.NotificationSetting
+import com.moa.entity.NotificationSettingType
 import com.moa.entity.Term
 import com.moa.repository.NotificationSettingRepository
 import com.moa.repository.TermAgreementRepository
@@ -17,47 +18,45 @@ class NotificationSettingService(
 ) {
 
     @Transactional(readOnly = true)
-    fun getSettings(memberId: Long): NotificationSettingResponse {
+    fun getSettings(memberId: Long): List<NotificationSettingResponse> {
         val setting = notificationSettingRepository.findByMemberId(memberId)
-        return NotificationSettingResponse.from(setting)
+        if (setting != null) {
+            return NotificationSettingResponse.from(setting)
+        }
+        // Setting 지연생성 때문에 지저분한 코드..
+        return NotificationSettingResponse.from(isMarketingAgreed(memberId))
     }
 
     @Transactional
-    fun updateWorkNotification(memberId: Long, enabled: Boolean): NotificationSettingResponse {
-        val setting = getOrCreate(memberId)
-        setting.workNotificationEnabled = enabled
-        return NotificationSettingResponse.from(setting)
-    }
-
-    @Transactional
-    fun updatePaydayNotification(memberId: Long, enabled: Boolean): NotificationSettingResponse {
-        val setting = getOrCreate(memberId)
-        setting.paydayNotificationEnabled = enabled
-        return NotificationSettingResponse.from(setting)
-    }
-
-    @Transactional
-    fun updatePromotionNotification(memberId: Long, enabled: Boolean): NotificationSettingResponse {
-        val setting = getOrCreate(memberId)
-
-        if (enabled) {
+    fun updateSetting(
+        memberId: Long,
+        type: NotificationSettingType,
+        checked: Boolean
+    ): List<NotificationSettingResponse> {
+        if (type == NotificationSettingType.MARKETING && checked) {
             validateMarketingAgreed(memberId)
         }
-
-        setting.promotionNotificationEnabled = enabled
-
+        val setting = getOrCreate(memberId)
+        setting.update(type, checked)
         return NotificationSettingResponse.from(setting)
     }
 
     private fun getOrCreate(memberId: Long): NotificationSetting {
         return notificationSettingRepository.findByMemberId(memberId)
-            ?: notificationSettingRepository.save(NotificationSetting(memberId = memberId))
+            ?: notificationSettingRepository.save(
+                NotificationSetting(
+                    memberId = memberId,
+                    marketingNotificationEnabled = isMarketingAgreed(memberId),
+                )
+            )
+    }
+
+    private fun isMarketingAgreed(memberId: Long): Boolean {
+        return termAgreementRepository.findByMemberIdAndTermCode(memberId, Term.MARKETING)?.agreed ?: false
     }
 
     private fun validateMarketingAgreed(memberId: Long) {
-        val agreement = termAgreementRepository.findByMemberIdAndTermCode(memberId, Term.MARKETING)
-
-        if (agreement == null || !agreement.agreed) {
+        if (!isMarketingAgreed(memberId)) {
             throw BadRequestException(ErrorCode.REQUIRED_MARKETING_TERM)
         }
     }
