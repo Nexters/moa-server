@@ -20,21 +20,9 @@ class NotificationSettingController(
         @Auth member: AuthMemberInfo,
     ) = ApiResponse.success(notificationSettingService.getSettings(member.id))
 
-    @PatchMapping("/work")
-    fun updateWorkNotification(
+    @PatchMapping
+    fun updateSetting(
         @Auth member: AuthMemberInfo,
         @RequestBody req: NotificationSettingUpdateRequest,
-    ) = ApiResponse.success(notificationSettingService.updateWorkNotification(member.id, req.enabled))
-
-    @PatchMapping("/payday")
-    fun updatePaydayNotification(
-        @Auth member: AuthMemberInfo,
-        @RequestBody req: NotificationSettingUpdateRequest,
-    ) = ApiResponse.success(notificationSettingService.updatePaydayNotification(member.id, req.enabled))
-
-    @PatchMapping("/promotion")
-    fun updatePromotionNotification(
-        @Auth member: AuthMemberInfo,
-        @RequestBody req: NotificationSettingUpdateRequest,
-    ) = ApiResponse.success(notificationSettingService.updatePromotionNotification(member.id, req.enabled))
+    ) = ApiResponse.success(notificationSettingService.updateSetting(member.id, req.type, req.checked))
 }
