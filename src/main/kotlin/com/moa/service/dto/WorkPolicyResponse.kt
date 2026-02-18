@@ -6,7 +6,6 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 data class WorkPolicyResponse(
-    val effectiveFrom: LocalDate,
     val workdays: List<Workday>,
     @JsonFormat(pattern = "HH:mm")
     val clockInTime: LocalTime,

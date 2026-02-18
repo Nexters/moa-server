@@ -33,7 +33,6 @@ class PayrollService(
             )
 
         return PayrollResponse(
-            effectiveFrom = saved.effectiveFrom,
             salaryInputType = saved.salaryInputType,
             salaryAmount = saved.salaryAmount,
         )
@@ -45,7 +44,6 @@ class PayrollService(
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
             ?: throw NotFoundException()
         return PayrollResponse(
-            effectiveFrom = version.effectiveFrom,
             salaryInputType = version.salaryInputType,
             salaryAmount = version.salaryAmount,
         )
