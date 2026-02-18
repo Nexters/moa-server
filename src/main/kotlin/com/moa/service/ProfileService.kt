@@ -1,9 +1,15 @@
 package com.moa.service
 
+import com.moa.common.exception.BadRequestException
+import com.moa.common.exception.ErrorCode
+import com.moa.common.exception.NotFoundException
 import com.moa.entity.Profile
 import com.moa.repository.ProfileRepository
+import com.moa.service.dto.NicknameUpdateRequest
 import com.moa.service.dto.ProfileResponse
-import com.moa.service.dto.ProfileUpsertRequest
+import com.moa.service.dto.WorkplaceUpdateRequest
+import com.moa.service.dto.PaydayUpdateRequest
+import com.moa.service.dto.OnboardingProfileUpsertRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -12,25 +18,80 @@ class ProfileService(
     private val profileRepository: ProfileRepository,
 ) {
 
+    @Transactional(readOnly = true)
+    fun getProfile(memberId: Long): ProfileResponse {
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
+        )
+    }
+
     @Transactional
-    fun upsertProfile(memberId: Long, req: ProfileUpsertRequest): ProfileResponse {
+    fun upsertProfile(memberId: Long, req: OnboardingProfileUpsertRequest): ProfileResponse {
         val nickname = req.nickname
-        val workplace = req.workplace
 
         val profile = profileRepository.findByMemberId(memberId)?.apply {
             this.nickname = nickname
-            this.workplace = workplace
         } ?: profileRepository.save(
             Profile(
                 memberId = memberId,
                 nickname = nickname,
-                workplace = workplace,
             )
         )
 
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
+        )
+    }
+
+    @Transactional
+    fun updateNickname(memberId: Long, req: NicknameUpdateRequest): ProfileResponse {
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+
+        profile.nickname = req.nickname
+
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
+        )
+    }
+
+    @Transactional
+    fun updateWorkplace(memberId: Long, req: WorkplaceUpdateRequest): ProfileResponse {
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+
+        profile.workplace = req.workplace
+
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
+        )
+    }
+
+    @Transactional
+    fun updatePayday(memberId: Long, req: PaydayUpdateRequest): ProfileResponse {
+        if (req.paydayDay !in 1..31) {
+            throw BadRequestException(ErrorCode.INVALID_PAYDAY_INPUT)
+        }
+
+        val profile = profileRepository.findByMemberId(memberId)
+            ?: throw NotFoundException()
+
+        profile.paydayDay = req.paydayDay
+
+        return ProfileResponse(
+            nickname = profile.nickname,
+            workplace = profile.workplace,
+            paydayDay = profile.paydayDay,
         )
     }
 }

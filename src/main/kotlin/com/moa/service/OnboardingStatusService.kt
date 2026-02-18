@@ -22,11 +22,12 @@ class OnboardingStatusService(
     fun getStatus(memberId: Long, today: LocalDate = LocalDate.now()): OnboardingStatusResponse {
         // 프로필 완료 여부
         val profile = profileRepository.findByMemberId(memberId)
-            ?.takeIf { it.nickname.isNotBlank() && it.workplace.isNotBlank() }
+            ?.takeIf { it.nickname.isNotBlank() }
             ?.let {
                 ProfileResponse(
                     nickname = it.nickname,
                     workplace = it.workplace,
+                    paydayDay = it.paydayDay,
                 )
             }
 
@@ -35,10 +36,8 @@ class OnboardingStatusService(
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
             ?.let {
                 PayrollResponse(
-                    effectiveFrom = it.effectiveFrom,
                     salaryInputType = it.salaryInputType,
                     salaryAmount = it.salaryAmount,
-                    paydayDay = it.paydayDay,
                 )
             }
 
@@ -48,7 +47,6 @@ class OnboardingStatusService(
             ?.takeIf { it.workdays.isNotEmpty() }
             ?.let {
                 WorkPolicyResponse(
-                    effectiveFrom = it.effectiveFrom,
                     workdays = it.workdays.sorted(),
                     clockInTime = it.clockInTime,
                     clockOutTime = it.clockOutTime,

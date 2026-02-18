@@ -43,8 +43,6 @@ class WorkdayService(
 
     @Transactional
     fun upsertSchedule(memberId: Long, date: LocalDate, req: WorkdayUpsertRequest): WorkdayResponse {
-        validateClockTimes(req.clockInTime, req.clockOutTime)
-
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
             ?.apply {
                 this.clockInTime = req.clockInTime
@@ -80,7 +78,6 @@ class WorkdayService(
             }
 
         workSchedule.apply {
-            validateClockTimes(this.clockInTime, req.clockOutTime)
             this.clockOutTime = req.clockOutTime
         }
 
@@ -96,18 +93,12 @@ class WorkdayService(
     private fun findEffectivePolicyForWorkday(memberId: Long, date: LocalDate): WorkPolicyVersion {
         val policy = workPolicyVersionRepository
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+            ?: throw NotFoundException()
 
         if (policy.workdays.none { it.dayOfWeek == date.dayOfWeek }) {
-            throw NotFoundException(ErrorCode.WORKDAY_NOT_FOUND)
+            throw NotFoundException()
         }
 
         return policy
-    }
-
-    private fun validateClockTimes(clockInTime: LocalTime, clockOutTime: LocalTime) {
-        if (!clockInTime.isBefore(clockOutTime)) {
-            throw BadRequestException(ErrorCode.INVALID_WORK_POLICY_INPUT)
-        }
     }
 }

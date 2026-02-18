@@ -4,13 +4,15 @@ import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.auth.OnboardingAuth
 import com.moa.common.response.ApiResponse
 import com.moa.service.*
-import com.moa.service.dto.PayrollUpsertRequest
-import com.moa.service.dto.ProfileUpsertRequest
+import com.moa.service.dto.OnboardingPayrollUpsertRequest
+import com.moa.service.dto.OnboardingProfileUpsertRequest
 import com.moa.service.dto.TermsAgreementRequest
 import com.moa.service.dto.WorkPolicyUpsertRequest
+import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
+@Tag(name = "Onboarding", description = "온보딩 API (최초 가입 시 프로필/급여/근무정책/약관 설정)")
 @RestController
 @RequestMapping("/api/v1/onboarding")
 class OnboardingController(
@@ -28,13 +30,13 @@ class OnboardingController(
     @PatchMapping("/profile")
     fun upsertProfile(
         @OnboardingAuth member: AuthMemberInfo,
-        @RequestBody @Valid req: ProfileUpsertRequest,
+        @RequestBody @Valid req: OnboardingProfileUpsertRequest,
     ) = ApiResponse.success(profileService.upsertProfile(member.id, req))
 
     @PatchMapping("/payroll")
     fun upsertPayroll(
         @OnboardingAuth member: AuthMemberInfo,
-        @RequestBody @Valid req: PayrollUpsertRequest,
+        @RequestBody @Valid req: OnboardingPayrollUpsertRequest,
     ) = ApiResponse.success(payrollService.upsert(member.id, req))
 
     @PatchMapping("/work-policy")

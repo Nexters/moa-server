@@ -2,6 +2,7 @@ package com.moa.common.oidc
 
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
+import com.moa.common.exception.UnauthorizedException
 import org.springframework.stereotype.Component
 import java.security.interfaces.RSAPublicKey
 import java.time.Instant
@@ -35,6 +36,6 @@ class OidcPublicKeyCache(
         cache[jwksUri] = CacheEntry(keys, expiresAt)
 
         return keys[kid]
-            ?: throw BadRequestException(ErrorCode.INVALID_ID_TOKEN);
+            ?: throw UnauthorizedException(ErrorCode.INVALID_ID_TOKEN);
     }
 }
