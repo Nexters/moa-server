@@ -33,7 +33,6 @@ class WorkPolicyService(
         versionRepository.save(version)
 
         return WorkPolicyResponse(
-            effectiveFrom = version.effectiveFrom,
             workdays = req.workdays.sortedBy { it.dayOfWeek.value },
             clockInTime = req.clockInTime,
             clockOutTime = req.clockOutTime,
@@ -47,7 +46,6 @@ class WorkPolicyService(
             ?: throw NotFoundException()
 
         return WorkPolicyResponse(
-            effectiveFrom = version.effectiveFrom,
             workdays = version.workdays.sortedBy { it.dayOfWeek.value },
             clockInTime = version.clockInTime,
             clockOutTime = version.clockOutTime,

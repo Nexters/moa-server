@@ -36,7 +36,6 @@ class OnboardingStatusService(
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, today)
             ?.let {
                 PayrollResponse(
-                    effectiveFrom = it.effectiveFrom,
                     salaryInputType = it.salaryInputType,
                     salaryAmount = it.salaryAmount,
                 )
@@ -48,7 +47,6 @@ class OnboardingStatusService(
             ?.takeIf { it.workdays.isNotEmpty() }
             ?.let {
                 WorkPolicyResponse(
-                    effectiveFrom = it.effectiveFrom,
                     workdays = it.workdays.sorted(),
                     clockInTime = it.clockInTime,
                     clockOutTime = it.clockOutTime,
