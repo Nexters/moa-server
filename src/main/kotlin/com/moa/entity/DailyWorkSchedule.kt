@@ -13,11 +13,15 @@ class DailyWorkSchedule(
     @Column(nullable = false)
     val date: LocalDate,
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    var clockInTime: LocalTime,
+    var type: DailyWorkScheduleType,
 
-    @Column(nullable = false)
-    var clockOutTime: LocalTime,
+    @Column(nullable = true)
+    var clockInTime: LocalTime? = null,
+
+    @Column(nullable = true)
+    var clockOutTime: LocalTime? = null,
 ) : BaseEntity() {
 
     @Id

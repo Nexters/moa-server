@@ -17,6 +17,7 @@ class AuthService(
     private val oidcIdTokenValidator: OidcIdTokenValidator,
     private val jwtTokenProvider: JwtTokenProvider,
     private val memberRepository: MemberRepository,
+    private val fcmTokenService: FcmTokenService,
 ) {
 
     @Transactional
@@ -29,6 +30,7 @@ class AuthService(
         )
 
         member?.let {
+            request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(member.id, token) }
             return KakaoSignInUpResponse(
                 jwtTokenProvider.createAccessToken(member.id)
             )
@@ -41,6 +43,8 @@ class AuthService(
                 profile = null,
             )
         )
+
+        request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(registeredMember.id, token) }
 
         val registerToken = jwtTokenProvider.createAccessToken(
             registeredMember.id
@@ -61,6 +65,7 @@ class AuthService(
         )
 
         member?.let {
+            request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(member.id, token) }
             return AppleSignInUpResponse(
                 jwtTokenProvider.createAccessToken(member.id)
             )
@@ -73,6 +78,8 @@ class AuthService(
                 profile = null,
             )
         )
+
+        request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(registeredMember.id, token) }
 
         val registerToken = jwtTokenProvider.createAccessToken(
             registeredMember.id

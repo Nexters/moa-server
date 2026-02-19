@@ -4,6 +4,7 @@ import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
 import com.moa.entity.DailyWorkSchedule
+import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.WorkPolicyVersionRepository
@@ -13,7 +14,6 @@ import com.moa.service.dto.WorkdayUpsertRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.LocalTime
 
 @Service
 class WorkdayService(
@@ -26,7 +26,8 @@ class WorkdayService(
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
         if (workSchedule != null) {
             return WorkdayResponse(
-                date = date,
+                date = workSchedule.date,
+                type = workSchedule.type,
                 clockInTime = workSchedule.clockInTime,
                 clockOutTime = workSchedule.clockOutTime,
             )
@@ -36,6 +37,7 @@ class WorkdayService(
 
         return WorkdayResponse(
             date = date,
+            type = DailyWorkScheduleType.WORK,
             clockInTime = policy.clockInTime,
             clockOutTime = policy.clockOutTime,
         )
@@ -43,22 +45,35 @@ class WorkdayService(
 
     @Transactional
     fun upsertSchedule(memberId: Long, date: LocalDate, req: WorkdayUpsertRequest): WorkdayResponse {
+        val (clockIn, clockOut) = when (req.type) {
+            DailyWorkScheduleType.WORK -> {
+                val clockIn = req.clockInTime ?: throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
+                val clockOut = req.clockOutTime ?: throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
+                clockIn to clockOut
+            }
+
+            DailyWorkScheduleType.VACATION -> null to null
+        }
+
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
             ?.apply {
-                this.clockInTime = req.clockInTime
-                this.clockOutTime = req.clockOutTime
+                this.type = req.type
+                this.clockInTime = clockIn
+                this.clockOutTime = clockOut
             }
             ?: DailyWorkSchedule(
                 memberId = memberId,
                 date = date,
-                clockInTime = req.clockInTime,
-                clockOutTime = req.clockOutTime,
+                type = req.type,
+                clockInTime = clockIn,
+                clockOutTime = clockOut,
             )
 
         val savedSchedule = dailyWorkScheduleRepository.save(workSchedule)
 
         return WorkdayResponse(
-            date = date,
+            date = savedSchedule.date,
+            type = savedSchedule.type,
             clockInTime = savedSchedule.clockInTime,
             clockOutTime = savedSchedule.clockOutTime,
         )
@@ -67,26 +82,39 @@ class WorkdayService(
     @Transactional
     fun patchClockOut(memberId: Long, date: LocalDate, req: WorkdayEditRequest): WorkdayResponse {
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
+            ?.also {
+                if (it.type == DailyWorkScheduleType.VACATION) {
+                    throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
+                }
+            }
             ?: run {
-                val policy = findEffectivePolicyForWorkday(memberId, date)
+                val policy = workPolicyVersionRepository
+                    .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
+                    ?: throw NotFoundException()
                 DailyWorkSchedule(
                     memberId = memberId,
                     date = date,
+                    type = DailyWorkScheduleType.WORK,
                     clockInTime = policy.clockInTime,
                     clockOutTime = policy.clockOutTime,
                 )
             }
 
-        workSchedule.apply {
-            this.clockOutTime = req.clockOutTime
+        workSchedule.clockOutTime?.let { clockOut ->
+            if (clockOut.isAfter(req.clockOutTime)) {
+                throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
+            }
         }
 
-        val saved = dailyWorkScheduleRepository.save(workSchedule)
+        workSchedule.clockOutTime = req.clockOutTime
+
+        val savedSchedule = dailyWorkScheduleRepository.save(workSchedule)
 
         return WorkdayResponse(
-            date = saved.date,
-            clockInTime = saved.clockInTime,
-            clockOutTime = saved.clockOutTime,
+            date = savedSchedule.date,
+            type = savedSchedule.type,
+            clockInTime = savedSchedule.clockInTime,
+            clockOutTime = savedSchedule.clockOutTime,
         )
     }
 
