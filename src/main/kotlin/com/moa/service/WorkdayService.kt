@@ -88,7 +88,9 @@ class WorkdayService(
                 }
             }
             ?: run {
-                val policy = findEffectivePolicyForWorkday(memberId, date)
+                val policy = workPolicyVersionRepository
+                    .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
+                    ?: throw NotFoundException()
                 DailyWorkSchedule(
                     memberId = memberId,
                     date = date,
@@ -97,6 +99,12 @@ class WorkdayService(
                     clockOutTime = policy.clockOutTime,
                 )
             }
+
+        workSchedule.clockOutTime?.let { clockOut ->
+            if (clockOut.isAfter(req.clockOutTime)) {
+                throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
+            }
+        }
 
         workSchedule.clockOutTime = req.clockOutTime
 
@@ -114,6 +122,10 @@ class WorkdayService(
         val policy = workPolicyVersionRepository
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
             ?: throw NotFoundException()
+
+        if (policy.workdays.none { it.dayOfWeek == date.dayOfWeek }) {
+            throw NotFoundException()
+        }
 
         return policy
     }
