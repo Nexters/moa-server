@@ -16,10 +16,12 @@ class TermsService(
     private val termAgreementRepository: TermAgreementRepository,
 ) {
 
+    private val TERM_SORTER = compareBy<Term> { it.sortOrder }
+
     @Transactional(readOnly = true)
     fun getTerms(): TermsResponse {
         val terms = termRepository.findAll()
-            .sortedWith(compareByDescending<Term> { it.required }.thenBy { it.code })
+            .sortedWith(TERM_SORTER)
             .map {
                 TermDto(
                     code = it.code,
