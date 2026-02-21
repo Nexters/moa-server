@@ -8,6 +8,7 @@ import java.time.LocalTime
 data class WorkdayResponse(
     val date: LocalDate,
     val type: DailyWorkScheduleType,
+    val dailyPay: Int,
     @JsonFormat(pattern = "HH:mm")
     val clockInTime: LocalTime? = null,
     @JsonFormat(pattern = "HH:mm")

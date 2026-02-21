@@ -47,6 +47,7 @@ dependencies {
     implementation("tools.jackson.module:jackson-module-kotlin")
 
     // test
+    testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")

@@ -6,6 +6,7 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 
 class SalaryCalculatorTest {
 
@@ -154,6 +155,51 @@ class SalaryCalculatorTest {
         )
 
         assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+    }
+
+    // --- 근무 시간(분) 계산 ---
+
+    @Test
+    fun `calculateWorkMinutes - 9시에서 18시는 540분을 반환한다`() {
+        val result = SalaryCalculator.calculateWorkMinutes(
+            LocalTime.of(9, 0),
+            LocalTime.of(18, 0),
+        )
+        assertThat(result).isEqualTo(540L)
+    }
+
+    @Test
+    fun `calculateWorkMinutes - 자정넘김 22시에서 2시는 240분을 반환한다`() {
+        val result = SalaryCalculator.calculateWorkMinutes(
+            LocalTime.of(22, 0),
+            LocalTime.of(2, 0),
+        )
+        assertThat(result).isEqualTo(240L)
+    }
+
+    // --- 실제 수입 계산 ---
+
+    @Test
+    fun `calculateEarnings - 실제 근무시간이 정책과 같으면 일급과 동일한 금액을 반환한다`() {
+        val dailyRate = BigDecimal(150_000)
+        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 540)
+        assertThat(result).isEqualByComparingTo(dailyRate)
+    }
+
+    @Test
+    fun `calculateEarnings - 초과 근무시 분급 기준으로 증가된 금액을 반환한다`() {
+        val dailyRate = BigDecimal(150_000)
+        // 540분 정책, 600분 실제 (1시간 초과)
+        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 600)
+        assertThat(result).isGreaterThan(dailyRate)
+    }
+
+    @Test
+    fun `calculateEarnings - 조기 퇴근시 분급 기준으로 감소된 금액을 반환한다`() {
+        val dailyRate = BigDecimal(150_000)
+        // 540분 정책, 480분 실제 (1시간 조기 퇴근)
+        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 480)
+        assertThat(result).isLessThan(dailyRate)
     }
 
     @Test

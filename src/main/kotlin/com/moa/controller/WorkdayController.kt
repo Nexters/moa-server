@@ -24,6 +24,13 @@ class WorkdayController(
         @PathVariable date: LocalDate,
     ) = ApiResponse.success(workdayService.getSchedule(member.id, date))
 
+    @GetMapping("/earnings")
+    fun getMonthlyEarnings(
+        @Auth member: AuthMemberInfo,
+        @RequestParam year: Int,
+        @RequestParam month: Int,
+    ) = ApiResponse.success(workdayService.getMonthlyEarnings(member.id, year, month))
+
     @GetMapping
     fun getMonthlySchedules(
         @Auth member: AuthMemberInfo,
