@@ -1,7 +1,9 @@
-package com.moa.service
+package com.moa.service.notification
 
 import com.moa.entity.NotificationStatus
 import com.moa.repository.NotificationLogRepository
+import com.moa.service.FcmService
+import com.moa.service.FcmTokenService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

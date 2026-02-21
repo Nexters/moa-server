@@ -1,4 +1,4 @@
-package com.moa.service
+package com.moa.service.notification
 
 import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.NotificationLog
@@ -49,6 +49,7 @@ class NotificationSyncService(
                 NotificationType.CLOCK_IN -> {
                     clockInTime?.let { pendingLog.scheduledTime = truncateToMinute(it) }
                 }
+
                 NotificationType.CLOCK_OUT -> {
                     clockOutTime?.let {
                         val truncated = truncateToMinute(it)

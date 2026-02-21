@@ -1,24 +1,26 @@
-package com.moa.service
+package com.moa.service.notification
 
+import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.NotificationLog
 import com.moa.entity.NotificationType
-import com.moa.entity.SalaryCalculator
-import com.moa.entity.SalaryType
-import com.moa.repository.PayrollVersionRepository
+import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
+import com.moa.service.EarningsCalculator
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.text.NumberFormat
 import java.time.LocalDate
+import java.time.YearMonth
 import java.util.*
 
 @Service
 class NotificationMessageBuilder(
     private val profileRepository: ProfileRepository,
-    private val payrollVersionRepository: PayrollVersionRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
+    private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
+    private val earningsCalculator: EarningsCalculator,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -32,27 +34,29 @@ class NotificationMessageBuilder(
     }
 
     private fun buildClockOutBody(notification: NotificationLog): String {
-        val dailyRate = calculateDailyRate(notification.memberId, notification.scheduledDate)
-        if (dailyRate == null || dailyRate == BigDecimal.ZERO) {
+        val earnings = calculateTodayEarnings(notification.memberId, notification.scheduledDate)
+        if (earnings == null || earnings == BigDecimal.ZERO) {
             return CLOCK_OUT_FALLBACK_BODY
         }
-        val formatted = NumberFormat.getNumberInstance(Locale.KOREA).format(dailyRate)
+        val formatted = NumberFormat.getNumberInstance(Locale.KOREA).format(earnings)
         return notification.notificationType.getBody(formatted)
     }
 
-    private fun calculateDailyRate(memberId: Long, date: LocalDate): BigDecimal? {
-        val payroll = payrollVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: return null
+    private fun calculateTodayEarnings(memberId: Long, date: LocalDate): BigDecimal? {
+        val lastDayOfMonth = YearMonth.from(date).atEndOfMonth()
         val policy = workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: return null
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                memberId, lastDayOfMonth,
+            ) ?: return null
 
-        return SalaryCalculator.calculateDailyRate(
-            targetDate = date,
-            salaryType = SalaryType.from(payroll.salaryInputType),
-            salaryAmount = payroll.salaryAmount,
-            workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
+        val override = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
+        return earningsCalculator.calculateDailyEarnings(
+            memberId = memberId,
+            date = date,
+            policy = policy,
+            type = override?.type ?: DailyWorkScheduleType.WORK,
+            clockInTime = override?.clockInTime,
+            clockOutTime = override?.clockOutTime,
         )
     }
 

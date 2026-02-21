@@ -1,4 +1,4 @@
-package com.moa.service
+package com.moa.service.notification
 
 import com.moa.entity.NotificationSetting
 import com.moa.entity.NotificationSettingType

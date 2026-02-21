@@ -15,12 +15,12 @@ interface WorkPolicyVersionRepository : JpaRepository<WorkPolicyVersion, Long> {
 
     @Query(
         """
-        SELECT DISTINCT w FROM WorkPolicyVersion w
-        JOIN FETCH w.workdays
-        WHERE w.effectiveFrom = (
-            SELECT MAX(w2.effectiveFrom)
-            FROM WorkPolicyVersion w2
-            WHERE w2.memberId = w.memberId AND w2.effectiveFrom <= :date
+        select distinct w from WorkPolicyVersion w
+        join fetch w.workdays
+        where w.effectiveFrom = (
+            select max(w2.effectiveFrom)
+            from WorkPolicyVersion w2
+            where w2.memberId = w.memberId and w2.effectiveFrom <= :date
         )
     """
     )
