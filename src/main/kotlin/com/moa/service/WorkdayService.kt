@@ -75,7 +75,6 @@ class WorkdayService(
         year: Int,
         month: Int,
     ): List<MonthlyWorkdayResponse> {
-
         val start = LocalDate.of(year, month, 1)
         val end = start.withDayOfMonth(start.lengthOfMonth())
 
@@ -198,7 +197,6 @@ class WorkdayService(
         memberId: Long,
         date: LocalDate,
     ): DailyWorkScheduleType {
-
         val policy = workPolicyVersionRepository
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 memberId,
