@@ -43,11 +43,15 @@ class NotificationDispatchService(
             }
 
             val message = notificationMessageBuilder.buildMessage(notification)
-            log.info("전송된 메시지 내용입니다. \n ------------------------------------------ \n {}", message)
+            val data = mapOf(
+                "title" to message.title,
+                "body" to message.body,
+                "type" to message.type.name,
+            )
 
             var anySuccess = false
             for (token in tokens) {
-                if (fcmService.send(token.token, message.title, message.body)) {
+                if (fcmService.send(token.token, data)) {
                     anySuccess = true
                 }
             }

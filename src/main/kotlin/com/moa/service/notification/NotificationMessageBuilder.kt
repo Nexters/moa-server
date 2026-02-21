@@ -29,8 +29,9 @@ class NotificationMessageBuilder(
         val body = when (notification.notificationType) {
             NotificationType.CLOCK_IN -> notification.notificationType.body
             NotificationType.CLOCK_OUT -> buildClockOutBody(notification)
+            NotificationType.PAYDAY -> notification.notificationType.body
         }
-        return NotificationMessage(title, body)
+        return NotificationMessage(title, body, notification.notificationType)
     }
 
     private fun buildClockOutBody(notification: NotificationLog): String {
@@ -65,4 +66,4 @@ class NotificationMessageBuilder(
     }
 }
 
-data class NotificationMessage(val title: String, val body: String)
+data class NotificationMessage(val title: String, val body: String, val type: NotificationType)

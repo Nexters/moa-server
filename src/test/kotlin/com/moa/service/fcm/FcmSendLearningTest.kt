@@ -5,7 +5,6 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.Message
-import com.google.firebase.messaging.Notification
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Tag
@@ -41,11 +40,12 @@ class FcmSendLearningTest {
     fun `FCM 메시지 전송 테스트`() {
         val message = Message.builder()
             .setToken(TEST_FCM_TOKEN)
-            .setNotification(
-                Notification.builder()
-                    .setTitle("테스트 알림")
-                    .setBody("FCM 전송 학습 테스트입니다.")
-                    .build()
+            .putAllData(
+                mapOf(
+                    "title" to "테스트 알림",
+                    "body" to "FCM 전송 테스트입니다.",
+                    "type" to "CLOCK_IN",
+                )
             )
             .build()
 

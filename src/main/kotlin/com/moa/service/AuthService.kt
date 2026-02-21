@@ -9,6 +9,7 @@ import com.moa.service.dto.AppleSignInUpRequest
 import com.moa.service.dto.AppleSignInUpResponse
 import com.moa.service.dto.KaKaoSignInUpRequest
 import com.moa.service.dto.KakaoSignInUpResponse
+import com.moa.service.dto.LogoutRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -86,5 +87,10 @@ class AuthService(
         return AppleSignInUpResponse(
             registerToken,
         )
+    }
+
+    @Transactional
+    fun logout(memberId: Long, request: LogoutRequest) {
+        fcmTokenService.deleteToken(memberId, request.fcmDeviceToken)
     }
 }
