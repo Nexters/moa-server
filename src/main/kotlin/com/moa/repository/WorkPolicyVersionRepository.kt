@@ -12,8 +12,9 @@ interface WorkPolicyVersionRepository : JpaRepository<WorkPolicyVersion, Long> {
     ): WorkPolicyVersion?
 
     fun findByMemberIdAndEffectiveFrom(memberId: Long, effectiveFrom: LocalDate): WorkPolicyVersion?
-    
-    @Query("""
+
+    @Query(
+        """
         SELECT DISTINCT w FROM WorkPolicyVersion w
         JOIN FETCH w.workdays
         WHERE w.effectiveFrom = (
@@ -21,6 +22,7 @@ interface WorkPolicyVersionRepository : JpaRepository<WorkPolicyVersion, Long> {
             FROM WorkPolicyVersion w2
             WHERE w2.memberId = w.memberId AND w2.effectiveFrom <= :date
         )
-    """)
+    """
+    )
     fun findLatestEffectivePoliciesPerMember(date: LocalDate): List<WorkPolicyVersion>
 }

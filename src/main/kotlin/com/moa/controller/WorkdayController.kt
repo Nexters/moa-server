@@ -24,6 +24,15 @@ class WorkdayController(
         @PathVariable date: LocalDate,
     ) = ApiResponse.success(workdayService.getSchedule(member.id, date))
 
+    @GetMapping
+    fun getMonthlySchedules(
+        @Auth member: AuthMemberInfo,
+        @RequestParam year: Int,
+        @RequestParam month: Int,
+    ) = ApiResponse.success(
+        workdayService.getMonthlySchedules(member.id, year, month)
+    )
+    
     @PutMapping("/{date}")
     fun upsertSchedule(
         @Auth member: AuthMemberInfo,

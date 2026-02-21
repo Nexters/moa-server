@@ -8,6 +8,7 @@ import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.WorkPolicyVersionRepository
+import com.moa.service.dto.MonthlyWorkdayResponse
 import com.moa.service.dto.WorkdayEditRequest
 import com.moa.service.dto.WorkdayResponse
 import com.moa.service.dto.WorkdayUpsertRequest
@@ -23,25 +24,91 @@ class WorkdayService(
 ) {
 
     @Transactional(readOnly = true)
-    fun getSchedule(memberId: Long, date: LocalDate): WorkdayResponse {
-        val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
-        if (workSchedule != null) {
+    fun getSchedule(
+        memberId: Long,
+        date: LocalDate,
+    ): WorkdayResponse {
+        // 1. 저장된 스케줄이 있으면 최우선
+        val savedSchedule =
+            dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
+
+        if (savedSchedule != null) {
             return WorkdayResponse(
-                date = workSchedule.date,
-                type = workSchedule.type,
-                clockInTime = workSchedule.clockInTime,
-                clockOutTime = workSchedule.clockOutTime,
+                date = savedSchedule.date,
+                type = savedSchedule.type,
+                clockInTime = savedSchedule.clockInTime,
+                clockOutTime = savedSchedule.clockOutTime,
             )
         }
 
-        val policy = findEffectivePolicyForWorkday(memberId, date)
+        // 2. 월 대표 정책 기준으로 판단
+        val monthlyPolicy =
+            resolveMonthlyRepresentativePolicy(memberId, date.year, date.monthValue)
 
-        return WorkdayResponse(
-            date = date,
-            type = DailyWorkScheduleType.WORK,
-            clockInTime = policy.clockInTime,
-            clockOutTime = policy.clockOutTime,
-        )
+        // 4. 요일 기준 WORK / NONE
+        val isWorkday =
+            monthlyPolicy.workdays.any {
+                it.dayOfWeek == date.dayOfWeek
+            }
+
+        return if (isWorkday) {
+            WorkdayResponse(
+                date = date,
+                type = DailyWorkScheduleType.WORK,
+                clockInTime = monthlyPolicy.clockInTime,
+                clockOutTime = monthlyPolicy.clockOutTime,
+            )
+        } else {
+            WorkdayResponse(
+                date = date,
+                type = DailyWorkScheduleType.NONE,
+                clockInTime = null,
+                clockOutTime = null,
+            )
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun getMonthlySchedules(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ): List<MonthlyWorkdayResponse> {
+
+        val start = LocalDate.of(year, month, 1)
+        val end = start.withDayOfMonth(start.lengthOfMonth())
+
+        val savedSchedulesByDate =
+            dailyWorkScheduleRepository
+                .findAllByMemberIdAndDateBetween(memberId, start, end)
+                .associateBy { it.date }
+
+        val monthlyPolicy =
+            resolveMonthlyRepresentativePolicy(memberId, year, month)
+
+        return generateSequence(start) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(end) }
+            .map { date ->
+                savedSchedulesByDate[date]?.let {
+                    MonthlyWorkdayResponse(
+                        date = date,
+                        type = it.type,
+                    )
+                } ?: run {
+                    val type =
+                        if (monthlyPolicy.workdays.any { it.dayOfWeek == date.dayOfWeek }) {
+                            DailyWorkScheduleType.WORK
+                        } else {
+                            DailyWorkScheduleType.NONE
+                        }
+
+                    MonthlyWorkdayResponse(
+                        date = date,
+                        type = type,
+                    )
+                }
+            }
+            .toList()
     }
 
     @Transactional
@@ -54,6 +121,8 @@ class WorkdayService(
             }
 
             DailyWorkScheduleType.VACATION -> null to null
+
+            DailyWorkScheduleType.NONE -> throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
         }
 
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
@@ -127,15 +196,21 @@ class WorkdayService(
         )
     }
 
-    private fun findEffectivePolicyForWorkday(memberId: Long, date: LocalDate): WorkPolicyVersion {
-        val policy = workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: throw NotFoundException()
+    private fun resolveMonthlyRepresentativePolicy(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ): WorkPolicyVersion {
 
-        if (policy.workdays.none { it.dayOfWeek == date.dayOfWeek }) {
-            throw NotFoundException()
-        }
+        val lastDayOfMonth =
+            LocalDate.of(year, month, 1)
+                .withDayOfMonth(LocalDate.of(year, month, 1).lengthOfMonth())
 
-        return policy
+        return workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                memberId,
+                lastDayOfMonth,
+            )
+            ?: throw IllegalStateException("해당 월의 마지막 날에 적용 가능한 근무 정책이 존재하지 않습니다. memberId=$memberId, year=$year, month=$month")
     }
 }
