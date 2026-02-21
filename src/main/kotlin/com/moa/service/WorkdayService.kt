@@ -44,6 +44,48 @@ class WorkdayService(
         )
     }
 
+    @Transactional(readOnly = true)
+    fun getMonthlySchedules(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ): List<WorkdayResponse> {
+
+        val start = LocalDate.of(year, month, 1)
+        val end = start.withDayOfMonth(start.lengthOfMonth())
+
+        val schedules = dailyWorkScheduleRepository
+            .findAllByMemberIdAndDateBetween(memberId, start, end)
+            .associateBy { it.date }
+
+        return (0 until start.lengthOfMonth())
+            .map { start.plusDays(it.toLong()) }
+            .map { date ->
+                schedules[date]?.let {
+                    WorkdayResponse(
+                        date = it.date,
+                        type = it.type,
+                        clockInTime = it.clockInTime,
+                        clockOutTime = it.clockOutTime,
+                    )
+                } ?: buildFromPolicy(memberId, date)
+            }
+    }
+
+    private fun buildFromPolicy(
+        memberId: Long,
+        date: LocalDate,
+    ): WorkdayResponse {
+        val policy = findEffectivePolicyForWorkday(memberId, date)
+
+        return WorkdayResponse(
+            date = date,
+            type = DailyWorkScheduleType.WORK,
+            clockInTime = policy.clockInTime,
+            clockOutTime = policy.clockOutTime,
+        )
+    }
+
     @Transactional
     fun upsertSchedule(memberId: Long, date: LocalDate, req: WorkdayUpsertRequest): WorkdayResponse {
         val (clockIn, clockOut) = when (req.type) {
