@@ -19,7 +19,7 @@ class MemberController(
     fun getMember(@Auth member: AuthMemberInfo) =
         ApiResponse.success(memberService.getMember(member.id))
 
-    @DeleteMapping
+    @PostMapping("/withdrawal")
     fun deleteMember(
         @Auth member: AuthMemberInfo,
         @RequestBody req: WithdrawalRequest,
