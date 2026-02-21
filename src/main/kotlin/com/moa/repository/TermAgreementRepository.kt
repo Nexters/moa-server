@@ -7,4 +7,6 @@ interface TermAgreementRepository : JpaRepository<TermAgreement, Long> {
     fun findAllByMemberId(memberId: Long): List<TermAgreement>
     
     fun findByMemberIdAndTermCode(memberId: Long, termCode: String): TermAgreement?
+
+    fun findAllByMemberIdIn(memberIds: Collection<Long>): List<TermAgreement>
 }

@@ -6,4 +6,5 @@ import java.time.LocalDate
 
 interface DailyWorkScheduleRepository : JpaRepository<DailyWorkSchedule, Long> {
     fun findByMemberIdAndDate(memberId: Long, date: LocalDate): DailyWorkSchedule?
+    fun findAllByMemberIdInAndDate(memberIds: Collection<Long>, date: LocalDate): List<DailyWorkSchedule>
 }

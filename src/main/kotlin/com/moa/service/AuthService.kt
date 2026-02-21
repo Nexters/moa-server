@@ -40,7 +40,6 @@ class AuthService(
             Member(
                 provider = ProviderType.KAKAO,
                 providerSubject = userInfo.subject,
-                profile = null,
             )
         )
 
@@ -75,7 +74,6 @@ class AuthService(
             Member(
                 provider = ProviderType.APPLE,
                 providerSubject = userInfo.subject,
-                profile = null,
             )
         )
 

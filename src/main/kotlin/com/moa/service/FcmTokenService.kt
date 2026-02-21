@@ -20,6 +20,10 @@ class FcmTokenService(
             ?: fcmTokenRepository.save(FcmToken(memberId = memberId, token = token))
     }
 
+    @Transactional(readOnly = true)
+    fun getTokensByMemberId(memberId: Long): List<FcmToken> =
+        fcmTokenRepository.findAllByMemberId(memberId)
+
     @Transactional
     fun deleteToken(memberId: Long, token: String) {
         val fcmToken = fcmTokenRepository.findByToken(token)

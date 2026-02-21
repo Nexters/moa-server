@@ -67,5 +67,7 @@ allOpen {
 }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("learning")
+    }
 }
