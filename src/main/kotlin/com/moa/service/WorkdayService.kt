@@ -98,40 +98,6 @@ class WorkdayService(
             }
     }
 
-    private fun resolveWorkPolicy(
-        memberId: Long,
-        date: LocalDate,
-    ): WorkPolicyVersion =
-        workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId,
-                date,
-            )
-            ?: throw IllegalStateException("WORK 타입으로 판정된 날짜에 적용 가능한 근무 정책이 존재하지 않습니다. memberId: $memberId, date: $date")
-
-    private fun resolveWorkdayTypeFromPolicy(
-        memberId: Long,
-        date: LocalDate,
-    ): DailyWorkScheduleType {
-
-        val policy = workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId,
-                date,
-            )
-            ?: return DailyWorkScheduleType.NONE
-
-        val isWorkday = policy.workdays.any {
-            it.dayOfWeek == date.dayOfWeek
-        }
-
-        return if (isWorkday) {
-            DailyWorkScheduleType.WORK
-        } else {
-            DailyWorkScheduleType.NONE
-        }
-    }
-
     @Transactional
     fun upsertSchedule(memberId: Long, date: LocalDate, req: WorkdayUpsertRequest): WorkdayResponse {
         val (clockIn, clockOut) = when (req.type) {
@@ -215,5 +181,39 @@ class WorkdayService(
             clockInTime = savedSchedule.clockInTime,
             clockOutTime = savedSchedule.clockOutTime,
         )
+    }
+
+    private fun resolveWorkPolicy(
+        memberId: Long,
+        date: LocalDate,
+    ): WorkPolicyVersion =
+        workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                memberId,
+                date,
+            )
+            ?: throw IllegalStateException("WORK 타입으로 판정된 날짜에 적용 가능한 근무 정책이 존재하지 않습니다. memberId: $memberId, date: $date")
+
+    private fun resolveWorkdayTypeFromPolicy(
+        memberId: Long,
+        date: LocalDate,
+    ): DailyWorkScheduleType {
+
+        val policy = workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                memberId,
+                date,
+            )
+            ?: return DailyWorkScheduleType.NONE
+
+        val isWorkday = policy.workdays.any {
+            it.dayOfWeek == date.dayOfWeek
+        }
+
+        return if (isWorkday) {
+            DailyWorkScheduleType.WORK
+        } else {
+            DailyWorkScheduleType.NONE
+        }
     }
 }
