@@ -189,8 +189,8 @@ class WorkdayService(
         }
 
         return MonthlyEarningsResponse(
-            totalEarnings = totalEarnings.toInt(),
-            defaultSalary = defaultSalary,
+            workedEarnings = totalEarnings.toInt(),
+            standardSalary = defaultSalary,
             workedMinutes = workedMinutes,
             standardMinutes = standardMinutes,
         )
