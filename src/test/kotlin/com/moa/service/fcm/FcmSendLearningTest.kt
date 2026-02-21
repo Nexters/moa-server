@@ -17,7 +17,7 @@ class FcmSendLearningTest {
     companion object {
         // 실제 디바이스의 FCM 토큰을 여기에 붙여넣어 테스트
         private const val TEST_FCM_TOKEN =
-            "cAsgUoH9QkGl41H_MoIYTm:APA91bFoYFXAx5Uh9TMRw8wRGgTdl2sEfESkp___oeljpKR8UOF3B5qjui8pzWz4dyxnwAUQN8UgQzxB240sHLNLBqbVpAzR5y0OsFVrohfDZJTMJKiMXck"
+            ""
 
         @JvmStatic
         @BeforeAll
