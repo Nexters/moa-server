@@ -29,6 +29,7 @@ class NotificationSyncService(
     ) {
         val pendingLogs = notificationLogRepository
             .findAllByMemberIdAndScheduledDateAndStatus(memberId, date, NotificationStatus.PENDING)
+            .filter { it.notificationType != NotificationType.PAYDAY }
 
         if (pendingLogs.isEmpty()) {
             restoreIfCancelled(memberId, date, type, clockInTime, clockOutTime)
@@ -62,6 +63,8 @@ class NotificationSyncService(
                         pendingLog.scheduledTime = truncated
                     }
                 }
+
+                NotificationType.PAYDAY -> Unit
             }
         }
         log.info("Synced pending notifications for member {} on {}", memberId, date)

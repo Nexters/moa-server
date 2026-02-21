@@ -12,15 +12,10 @@ class FcmService(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun send(token: String, title: String, body: String): Boolean {
+    fun send(token: String, data: Map<String, String>): Boolean {
         val message = Message.builder()
             .setToken(token)
-            .setNotification(
-                Notification.builder()
-                    .setTitle(title)
-                    .setBody(body)
-                    .build()
-            )
+            .putAllData(data)
             .build()
 
         return try {
