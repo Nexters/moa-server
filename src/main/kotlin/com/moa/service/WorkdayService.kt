@@ -19,6 +19,7 @@ import java.time.LocalDate
 class WorkdayService(
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
+    private val notificationSyncService: NotificationSyncService,
 ) {
 
     @Transactional(readOnly = true)
@@ -71,6 +72,10 @@ class WorkdayService(
 
         val savedSchedule = dailyWorkScheduleRepository.save(workSchedule)
 
+        notificationSyncService.syncNotifications(
+            memberId, date, savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime,
+        )
+
         return WorkdayResponse(
             date = savedSchedule.date,
             type = savedSchedule.type,
@@ -109,6 +114,10 @@ class WorkdayService(
         workSchedule.clockOutTime = req.clockOutTime
 
         val savedSchedule = dailyWorkScheduleRepository.save(workSchedule)
+
+        notificationSyncService.syncNotifications(
+            memberId, date, DailyWorkScheduleType.WORK, savedSchedule.clockInTime, savedSchedule.clockOutTime,
+        )
 
         return WorkdayResponse(
             date = savedSchedule.date,

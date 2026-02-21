@@ -1,14 +1,14 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${secret.db.prod.host}:${secret.db.prod.port}/${secret.db.prod.name}?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8
+    url: jdbc:mysql://${secret.db.prod.host}:${secret.db.prod.port}/${secret.db.prod.name}?serverTimezone=Asia/Seoul&useUniCode=yes&characterEncoding=UTF-8
     username: ${secret.db.prod.username}
     password: ${secret.db.prod.password}
 
   jpa:
     database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     properties:
       hibernate:
         format_sql: true

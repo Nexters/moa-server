@@ -12,9 +12,6 @@ class Member(
     val provider: ProviderType,
 
     val providerSubject: String,
-
-    @OneToOne(fetch = FetchType.LAZY)
-    val profile: Profile?,
-
+    
     ) : BaseEntity() {
 }
