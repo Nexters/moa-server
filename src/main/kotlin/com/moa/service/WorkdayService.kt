@@ -72,7 +72,19 @@ class WorkdayService(
                 clockIn to clockOut
             }
 
-            DailyWorkScheduleType.VACATION -> null to null
+            DailyWorkScheduleType.VACATION -> {
+                // 1. 요청에 시간이 있으면 사용, 없으면 정책 조회
+                if (req.clockInTime != null && req.clockOutTime != null) {
+                    req.clockInTime to req.clockOutTime
+                } else {
+                    val policy = workPolicyVersionRepository
+                        .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
+                        ?: throw NotFoundException()
+
+                    // 요청값이 하나라도 비어있으면 정책의 기본 시간을 할당
+                    policy.clockInTime to policy.clockOutTime
+                }
+            }
 
             DailyWorkScheduleType.NONE -> throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
         }
