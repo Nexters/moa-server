@@ -26,7 +26,6 @@ class HomeController(
         val profile = profileService.getProfile(member.id)
         val earnings = workdayService.getMonthlyEarnings(member.id, today.year, today.monthValue)
         val schedule = workdayService.getSchedule(member.id, today)
-        val policy = workPolicyService.getCurrent(member.id)
 
         return ApiResponse.success(
             HomeResponse(
@@ -35,8 +34,8 @@ class HomeController(
                 standardSalary = earnings.standardSalary,
                 dailyPay = schedule.dailyPay,
                 type = schedule.type,
-                clockInTime = policy.clockInTime,
-                clockOutTime = policy.clockOutTime,
+                clockInTime = schedule.clockInTime,
+                clockOutTime = schedule.clockOutTime,
             )
         )
     }
