@@ -8,4 +8,5 @@ interface FcmTokenRepository : JpaRepository<FcmToken, Long> {
     fun findByToken(token: String): FcmToken?
     fun deleteByToken(token: String)
     fun findAllByMemberIdIn(memberIds: Collection<Long>): List<FcmToken>
+    fun deleteAllByMemberId(memberId: Long)
 }
