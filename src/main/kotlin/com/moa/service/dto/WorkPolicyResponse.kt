@@ -7,8 +7,8 @@ import java.time.LocalTime
 
 data class WorkPolicyResponse(
     val workdays: List<Workday>,
-    @JsonFormat(pattern = "HH:mm")
+    @field:JsonFormat(pattern = "HH:mm")
     val clockInTime: LocalTime,
-    @JsonFormat(pattern = "HH:mm")
+    @field:JsonFormat(pattern = "HH:mm")
     val clockOutTime: LocalTime,
 )
