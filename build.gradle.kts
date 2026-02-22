@@ -25,6 +25,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     // data
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
