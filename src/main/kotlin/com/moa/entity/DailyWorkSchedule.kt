@@ -18,10 +18,10 @@ class DailyWorkSchedule(
     var type: DailyWorkScheduleType,
 
     @Column(nullable = true)
-    var clockInTime: LocalTime? = null,
+    var clockInTime: LocalTime,
 
     @Column(nullable = true)
-    var clockOutTime: LocalTime? = null,
+    var clockOutTime: LocalTime,
 ) : BaseEntity() {
 
     @Id
