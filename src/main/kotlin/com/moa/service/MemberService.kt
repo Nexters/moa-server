@@ -32,9 +32,8 @@ class MemberService(
     fun deleteMember(memberId: Long, req: WithdrawalRequest) {
         val member = memberRepository.findById(memberId)
             .orElseThrow { NotFoundException() }
-
-        // TODO 필요 시 다른 정보들도 삭제
-        fcmTokenRepository.findAllByMemberId(memberId)
+        
+        fcmTokenRepository.deleteAllByMemberId(memberId)
 
         req.reason.forEach {
             withdrawalRecordRepository.save(

@@ -50,19 +50,20 @@ class EarningsCalculatorTest {
     }
 
     @Test
-    fun `VACATION이면 유급 휴가로 기본 일급을 반환한다`() {
+    fun `VACATION이면 저장된 시간 기반으로 급여를 계산한다`() {
         stubPayroll()
+        val policy = createPolicy()
 
         val result = sut.calculateDailyEarnings(
             memberId = MEMBER_ID,
             date = DATE,
-            policy = createPolicy(),
+            policy = policy,
             type = DailyWorkScheduleType.VACATION,
-            clockInTime = null,
-            clockOutTime = null,
+            clockInTime = LocalTime.of(9, 0),
+            clockOutTime = LocalTime.of(18, 0),
         )
 
-        // 3,000,000 / 21 workdays in June 2025 = 142,857
+        // 정책 시간과 동일 → 일급 전액: 3,000,000 / 21 = 142,857
         assertThat(result).isNotNull
         assertThat(result!!.toLong()).isEqualTo(142857L)
     }
