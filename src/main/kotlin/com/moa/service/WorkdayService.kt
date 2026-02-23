@@ -134,7 +134,7 @@ class WorkdayService(
                 )
             }
 
-        workSchedule.clockOutTime?.let { clockOut ->
+        workSchedule.clockOutTime.let { clockOut ->
             if (clockOut.isAfter(req.clockOutTime)) {
                 throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
             }
@@ -164,9 +164,14 @@ class WorkdayService(
         val policyDailyMinutes = SalaryCalculator.calculateWorkMinutes(
             monthlyPolicy.clockInTime, monthlyPolicy.clockOutTime,
         )
-        val workDaysInMonth = generateSequence(start) { it.plusDays(1) }
-            .takeWhile { !it.isAfter(end) }
-            .count { d -> monthlyPolicy.workdays.any { it.dayOfWeek == d.dayOfWeek } }
+
+        val policyWorkDayOfWeeks = monthlyPolicy.workdays.map { it.dayOfWeek }.toSet()
+        val workDaysInMonth = SalaryCalculator.getWorkDaysInPeriod(
+            start = start,
+            end = end.plusDays(1),
+            workDays = policyWorkDayOfWeeks
+        )
+
         val standardMinutes = policyDailyMinutes * workDaysInMonth
 
         if (start.isAfter(today)) {
@@ -186,10 +191,10 @@ class WorkdayService(
         while (!date.isAfter(lastCalculableDate)) {
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
 
-            if (schedule.type == DailyWorkScheduleType.WORK && schedule.clockIn != null && schedule.clockOut != null) {
+            if ((schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
+                && schedule.clockIn != null && schedule.clockOut != null
+            ) {
                 workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, schedule.clockOut)
-            } else if (schedule.type == DailyWorkScheduleType.VACATION) {
-                workedMinutes += policyDailyMinutes
             }
 
             val dailyEarnings = earningsCalculator.calculateDailyEarnings(
