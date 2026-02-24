@@ -4,10 +4,8 @@ import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.NotificationLog
 import com.moa.entity.NotificationType
 import com.moa.repository.DailyWorkScheduleRepository
-import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
 import com.moa.service.EarningsCalculator
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.text.NumberFormat
@@ -17,12 +15,10 @@ import java.util.*
 
 @Service
 class NotificationMessageBuilder(
-    private val profileRepository: ProfileRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
     private val earningsCalculator: EarningsCalculator,
 ) {
-    private val log = LoggerFactory.getLogger(javaClass)
 
     fun buildMessage(notification: NotificationLog): NotificationMessage {
         val title = notification.notificationType.title
@@ -66,4 +62,10 @@ class NotificationMessageBuilder(
     }
 }
 
-data class NotificationMessage(val title: String, val body: String, val type: NotificationType)
+data class NotificationMessage(val title: String, val body: String, val type: NotificationType) {
+    fun toData(): Map<String, String> = mapOf(
+        "title" to title,
+        "body" to body,
+        "type" to type.name,
+    )
+}

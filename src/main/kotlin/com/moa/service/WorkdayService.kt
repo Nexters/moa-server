@@ -88,7 +88,10 @@ class WorkdayService(
                 } else {
                     val policy = workPolicyVersionRepository
                         .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-                        ?: throw NotFoundException()
+                        ?: workPolicyVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                            memberId,
+                            LocalDate.now()
+                        ) ?: throw NotFoundException()
 
                     // 요청값이 하나라도 비어있으면 정책의 기본 시간을 할당
                     policy.clockInTime to policy.clockOutTime
