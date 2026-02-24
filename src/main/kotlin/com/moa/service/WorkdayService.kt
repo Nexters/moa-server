@@ -31,8 +31,13 @@ class WorkdayService(
         date: LocalDate,
     ): WorkdayResponse {
         val saved = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
-        val policy = resolveMonthlyRepresentativePolicy(memberId, date.year, date.monthValue)
-        val schedule = resolveScheduleForDate(saved, policy, date)
+        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
+        val schedule =
+            if (policy == null) {
+                ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
+            } else {
+                resolveScheduleForDate(saved, policy, date)
+            }
         return createWorkdayResponse(memberId, date, schedule)
     }
 
@@ -51,13 +56,17 @@ class WorkdayService(
                 .findAllByMemberIdAndDateBetween(memberId, start, end)
                 .associateBy { it.date }
 
-        val monthlyPolicy =
-            resolveMonthlyRepresentativePolicy(memberId, year, month)
+        val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
 
         return generateSequence(start) { it.plusDays(1) }
             .takeWhile { !it.isAfter(end) }
             .map { date ->
-                val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+                val schedule =
+                    if (monthlyPolicy == null) {
+                        ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
+                    } else {
+                        resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+                    }
                 MonthlyWorkdayResponse(date = date, type = schedule.type)
             }
             .toList()
@@ -159,7 +168,15 @@ class WorkdayService(
         val today = LocalDate.now()
         val defaultSalary = earningsCalculator.getDefaultMonthlySalary(memberId, start) ?: 0
 
-        val monthlyPolicy = resolveMonthlyRepresentativePolicy(memberId, year, month)
+        val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
+        if (monthlyPolicy == null) {
+            return MonthlyEarningsResponse(
+                workedEarnings = 0,
+                standardSalary = defaultSalary,
+                workedMinutes = 0,
+                standardMinutes = 0,
+            )
+        }
 
         val policyDailyMinutes = SalaryCalculator.calculateWorkMinutes(
             monthlyPolicy.clockInTime, monthlyPolicy.clockOutTime,
@@ -241,7 +258,14 @@ class WorkdayService(
                 dailyPay = 0,
             )
         }
-        val policy = resolveMonthlyRepresentativePolicy(memberId, date.year, date.monthValue)
+        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
+            ?: return WorkdayResponse(
+                date = date,
+                type = schedule.type,
+                dailyPay = 0,
+                clockInTime = schedule.clockIn,
+                clockOutTime = schedule.clockOut,
+            )
         val earnings = earningsCalculator.calculateDailyEarnings(
             memberId, date, policy, schedule.type, schedule.clockIn, schedule.clockOut,
         )
@@ -254,12 +278,11 @@ class WorkdayService(
         )
     }
 
-    private fun resolveMonthlyRepresentativePolicy(
+    private fun resolveMonthlyRepresentativePolicyOrNull(
         memberId: Long,
         year: Int,
         month: Int,
-    ): WorkPolicyVersion {
-
+    ): WorkPolicyVersion? {
         val lastDayOfMonth =
             LocalDate.of(year, month, 1)
                 .withDayOfMonth(LocalDate.of(year, month, 1).lengthOfMonth())
@@ -269,7 +292,6 @@ class WorkdayService(
                 memberId,
                 lastDayOfMonth,
             )
-            ?: throw IllegalStateException("해당 월의 마지막 날에 적용 가능한 근무 정책이 존재하지 않습니다. memberId=$memberId, year=$year, month=$month")
     }
 }
 
