@@ -28,6 +28,7 @@ USER appuser
 EXPOSE 8080
 
 ENTRYPOINT ["java", \
+    "-Duser.timezone=Asia/Seoul", \
     "-XX:+UseContainerSupport", \
     "-XX:MaxRAMPercentage=75.0", \
     "-Djava.security.egd=file:/dev/./urandom", \
