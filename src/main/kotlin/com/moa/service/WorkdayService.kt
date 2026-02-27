@@ -146,12 +146,6 @@ class WorkdayService(
                 )
             }
 
-        workSchedule.clockOutTime.let { clockOut ->
-            if (clockOut.isAfter(req.clockOutTime)) {
-                throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
-            }
-        }
-
         workSchedule.clockOutTime = req.clockOutTime
 
         val savedSchedule = dailyWorkScheduleRepository.save(workSchedule)
