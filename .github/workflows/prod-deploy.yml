@@ -1,4 +1,4 @@
-name: BE Test Deploy
+name: Production Deploy Closed PRs
 
 on:
   push:
