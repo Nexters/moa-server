@@ -1,4 +1,4 @@
-name: Production Deploy Closed PRs
+name: Deploy on Push to Main
 
 on:
   push:
