@@ -15,7 +15,6 @@ permissions:
   pull-requests: write
   checks: write
 
-
 jobs:
   validation:
     runs-on: ubuntu-latest
@@ -33,18 +32,29 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run tests
+        working-directory: ./
+        run: |
+          chmod +x ./gradlew
+          ./gradlew test
+
+      - name: Upload validation HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          cache-read-only: false
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
-      - name: Run validation
-        run: ./gradlew test
+          name: validation-report
+          path: build/test-results/test/TEST-*.xml
 
       - name: Publish validation results
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
           files: build/test-results/test/TEST-*.xml
+
+      - name: Add comments to a pull request
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: build/test-results/test/TEST-*.xml
