@@ -192,7 +192,7 @@ class WorkdayService(
             return MonthlyEarningsResponse(0, defaultSalary, 0, standardMinutes)
         }
 
-        val lastCalculableDate = minOf(end, today)
+        val lastCalculableDate = minOf(end, today.minusDays(1))
 
         val savedSchedulesByDate = dailyWorkScheduleRepository
             .findAllByMemberIdAndDateBetween(memberId, start, lastCalculableDate)
