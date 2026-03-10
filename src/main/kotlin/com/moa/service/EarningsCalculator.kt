@@ -31,7 +31,7 @@ class EarningsCalculator(
      * @param date 기준 날짜 (이 날짜가 속한 월의 마지막 날을 기준으로 유효한 급여 정책을 적용합니다)
      * @return 계산된 기본 월급 금액. 적용할 수 있는 급여 정보가 존재하지 않으면 `null`을 반환합니다.
      */
-    fun getDefaultMonthlySalary(memberId: Long, date: LocalDate): Int? {
+    fun getDefaultMonthlySalary(memberId: Long, date: LocalDate): Long? {
         val lastDayOfMonth = YearMonth.from(date).atEndOfMonth()
         val payroll = payrollVersionRepository
             .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
@@ -40,9 +40,9 @@ class EarningsCalculator(
 
         return when (SalaryType.from(payroll.salaryInputType)) {
             SalaryType.YEARLY -> payroll.salaryAmount.toBigDecimal()
-                .divide(BigDecimal(12), 0, RoundingMode.HALF_UP).toInt()
+                .divide(BigDecimal(12), 0, RoundingMode.HALF_UP).toLong()
 
-            SalaryType.MONTHLY -> payroll.salaryAmount.toInt()
+            SalaryType.MONTHLY -> payroll.salaryAmount
         }
     }
 

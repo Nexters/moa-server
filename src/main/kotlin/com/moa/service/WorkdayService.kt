@@ -220,7 +220,7 @@ class WorkdayService(
         }
 
         return MonthlyEarningsResponse(
-            workedEarnings = totalEarnings.toInt(),
+            workedEarnings = totalEarnings.toLong(),
             standardSalary = defaultSalary,
             workedMinutes = workedMinutes,
             standardMinutes = standardMinutes,

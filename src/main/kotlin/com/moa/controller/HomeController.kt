@@ -4,7 +4,6 @@ import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.ProfileService
-import com.moa.service.WorkPolicyService
 import com.moa.service.WorkdayService
 import com.moa.service.dto.HomeResponse
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -17,7 +16,6 @@ import java.time.LocalDate
 class HomeController(
     private val profileService: ProfileService,
     private val workdayService: WorkdayService,
-    private val workPolicyService: WorkPolicyService,
 ) {
 
     @GetMapping("/api/v1/home")

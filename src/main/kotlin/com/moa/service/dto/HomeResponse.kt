@@ -6,8 +6,8 @@ import java.time.LocalTime
 
 data class HomeResponse(
     val workplace: String?,
-    val workedEarnings: Int,
-    val standardSalary: Int,
+    val workedEarnings: Long,
+    val standardSalary: Long,
     val dailyPay: Int,
     val type: DailyWorkScheduleType,
     @field:JsonFormat(pattern = "HH:mm")
