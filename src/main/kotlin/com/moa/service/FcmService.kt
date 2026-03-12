@@ -41,6 +41,11 @@ class FcmService(
                     .setBody(data["body"])
                     .build()
             )
+            .setAndroidConfig(
+                AndroidConfig.builder()
+                    .setPriority(AndroidConfig.Priority.HIGH)
+                    .build()
+            )
             .putAllData(data)
             .build()
 
