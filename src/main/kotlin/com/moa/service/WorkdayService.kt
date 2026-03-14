@@ -5,12 +5,14 @@ import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
 import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
+import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
 import com.moa.service.dto.*
 import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -19,6 +21,7 @@ import java.time.LocalTime
 class WorkdayService(
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
+    private val profileRepository: ProfileRepository,
     private val notificationSyncService: NotificationSyncService,
     private val earningsCalculator: EarningsCalculator,
 ) {
@@ -275,11 +278,14 @@ class WorkdayService(
         date: LocalDate,
         schedule: ResolvedSchedule,
     ): WorkdayResponse {
+        val events = resolveCalendarEvents(memberId, date)
+
         if (schedule.type == DailyWorkScheduleType.NONE) {
             return WorkdayResponse(
                 date = date,
                 type = DailyWorkScheduleType.NONE,
                 status = DailWorkStatusType.NONE,
+                events = events,
                 dailyPay = 0,
             )
         }
@@ -288,6 +294,7 @@ class WorkdayService(
                 date = date,
                 type = schedule.type,
                 status = resolveDailWorkStatus(date, schedule),
+                events = events,
                 dailyPay = 0,
                 clockInTime = schedule.clockIn,
                 clockOutTime = schedule.clockOut,
@@ -299,10 +306,40 @@ class WorkdayService(
             date = date,
             type = schedule.type,
             status = resolveDailWorkStatus(date, schedule),
+            events = events,
             dailyPay = earnings?.toInt() ?: 0,
             clockInTime = schedule.clockIn,
             clockOutTime = schedule.clockOut,
         )
+    }
+
+    private fun resolveCalendarEvents(memberId: Long, date: LocalDate): List<CalendarEventType> {
+        val events = mutableListOf<CalendarEventType>()
+        val paydayDay = profileRepository.findByMemberId(memberId)?.paydayDay
+
+        if (paydayDay != null && isPayday(date, paydayDay)) {
+            events += CalendarEventType.PAYDAY
+        }
+
+        // TODO: Add holiday event resolution when holiday data is available.
+
+        return events
+    }
+
+    private fun isPayday(date: LocalDate, paydayDay: Int): Boolean {
+        return resolveEffectivePayday(date.year, date.monthValue, paydayDay) == date
+    }
+
+    // 월급일이 해당 월에 없으면 말일로 보정하고, 그 날짜가 주말이면 직전 금요일로 당긴다.
+    private fun resolveEffectivePayday(year: Int, month: Int, paydayDay: Int): LocalDate {
+        val baseDate = LocalDate.of(year, month, 1)
+            .withDayOfMonth(minOf(paydayDay, LocalDate.of(year, month, 1).lengthOfMonth()))
+
+        return when (baseDate.dayOfWeek) {
+            DayOfWeek.SATURDAY -> baseDate.minusDays(1)
+            DayOfWeek.SUNDAY -> baseDate.minusDays(2)
+            else -> baseDate
+        }
     }
 
     private fun resolveDailWorkStatus(

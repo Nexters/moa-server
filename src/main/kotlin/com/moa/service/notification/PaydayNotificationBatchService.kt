@@ -5,6 +5,7 @@ import com.moa.repository.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -49,14 +50,20 @@ class PaydayNotificationBatchService(
     }
 
     private fun findPaydayProfiles(date: LocalDate): List<Profile> {
-        val dayOfMonth = date.dayOfMonth
-        val lastDayOfMonth = YearMonth.from(date).atEndOfMonth().dayOfMonth
-        val paydayDays = if (dayOfMonth == lastDayOfMonth) {
-            (dayOfMonth..31).toList()
-        } else {
-            listOf(dayOfMonth)
+        return profileRepository.findAllByPaydayDayIn((1..31).toList())
+            .filter { resolveEffectivePayday(date.year, date.monthValue, it.paydayDay) == date }
+    }
+
+    // 월급일이 해당 월에 없으면 말일로 보정하고, 그 날짜가 주말이면 직전 금요일로 당긴다.
+    private fun resolveEffectivePayday(year: Int, month: Int, paydayDay: Int): LocalDate {
+        val yearMonth = YearMonth.of(year, month)
+        val baseDate = yearMonth.atDay(minOf(paydayDay, yearMonth.lengthOfMonth()))
+
+        return when (baseDate.dayOfWeek) {
+            DayOfWeek.SATURDAY -> baseDate.minusDays(1)
+            DayOfWeek.SUNDAY -> baseDate.minusDays(2)
+            else -> baseDate
         }
-        return profileRepository.findAllByPaydayDayIn(paydayDays)
     }
 
     private fun findRequiredTermCodes(): Set<String> =
