@@ -89,7 +89,7 @@ class WorkdayService(
             return MonthlyEarningsResponse(0, defaultSalary, 0, standardMinutes)
         }
 
-        val lastCalculableDate = minOf(end, today.minusDays(1))
+        val lastCalculableDate = minOf(end, today)
 
         val savedSchedulesByDate = dailyWorkScheduleRepository
             .findAllByMemberIdAndDateBetween(memberId, start, lastCalculableDate)
@@ -97,19 +97,21 @@ class WorkdayService(
 
         var totalEarnings = BigDecimal.ZERO
         var workedMinutes = 0L
+        val now = LocalTime.now()
 
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+            val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
 
             if ((schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
-                && schedule.clockIn != null && schedule.clockOut != null
+                && schedule.clockIn != null && adjustedClockOut != null
             ) {
-                workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, schedule.clockOut)
+                workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
             }
 
             val dailyEarnings = earningsCalculator.calculateDailyEarnings(
-                memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, schedule.clockOut,
+                memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, adjustedClockOut,
             )
             totalEarnings = totalEarnings.add(dailyEarnings ?: BigDecimal.ZERO)
 
@@ -362,6 +364,31 @@ class WorkdayService(
             now.isBefore(startAt) -> DailWorkStatusType.SCHEDULED
             now.isBefore(endAt) -> DailWorkStatusType.IN_PROGRESS
             else -> DailWorkStatusType.COMPLETED
+        }
+    }
+
+    private fun resolveClockOutForEarnings(
+        targetDate: LocalDate,
+        today: LocalDate,
+        now: LocalTime,
+        schedule: ResolvedSchedule,
+    ): LocalTime? {
+        if (targetDate != today ||
+            (schedule.type != DailyWorkScheduleType.WORK && schedule.type != DailyWorkScheduleType.VACATION)
+        ) {
+            return schedule.clockOut
+        }
+
+        val clockIn = schedule.clockIn ?: return schedule.clockOut
+        val clockOut = schedule.clockOut ?: return null
+
+        if (now.isBefore(clockIn)) {
+            return null
+        }
+
+        return when {
+            clockOut.isAfter(clockIn) -> minOf(now, clockOut)
+            else -> now
         }
     }
 
