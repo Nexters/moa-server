@@ -32,6 +32,7 @@ class HomeController(
                 standardSalary = earnings.standardSalary,
                 dailyPay = schedule.dailyPay,
                 type = schedule.type,
+                status = schedule.status,
                 clockInTime = schedule.clockInTime,
                 clockOutTime = schedule.clockOutTime,
             )

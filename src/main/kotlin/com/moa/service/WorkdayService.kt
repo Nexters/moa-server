@@ -3,10 +3,7 @@ package com.moa.service
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
-import com.moa.entity.DailyWorkSchedule
-import com.moa.entity.DailyWorkScheduleType
-import com.moa.entity.SalaryCalculator
-import com.moa.entity.WorkPolicyVersion
+import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.WorkPolicyVersionRepository
 import com.moa.service.dto.*
@@ -15,6 +12,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Service
@@ -281,6 +279,7 @@ class WorkdayService(
             return WorkdayResponse(
                 date = date,
                 type = DailyWorkScheduleType.NONE,
+                status = DailWorkStatusType.NONE,
                 dailyPay = 0,
             )
         }
@@ -288,6 +287,7 @@ class WorkdayService(
             ?: return WorkdayResponse(
                 date = date,
                 type = schedule.type,
+                status = resolveDailWorkStatus(date, schedule),
                 dailyPay = 0,
                 clockInTime = schedule.clockIn,
                 clockOutTime = schedule.clockOut,
@@ -298,10 +298,34 @@ class WorkdayService(
         return WorkdayResponse(
             date = date,
             type = schedule.type,
+            status = resolveDailWorkStatus(date, schedule),
             dailyPay = earnings?.toInt() ?: 0,
             clockInTime = schedule.clockIn,
             clockOutTime = schedule.clockOut,
         )
+    }
+
+    private fun resolveDailWorkStatus(
+        date: LocalDate,
+        schedule: ResolvedSchedule,
+    ): DailWorkStatusType {
+        if (schedule.type == DailyWorkScheduleType.NONE) return DailWorkStatusType.NONE
+
+        val clockIn = schedule.clockIn ?: return DailWorkStatusType.NONE
+        val clockOut = schedule.clockOut ?: return DailWorkStatusType.NONE
+        val now = LocalDateTime.now()
+        val startAt = date.atTime(clockIn)
+        val endAt = if (clockOut.isAfter(clockIn)) {
+            date.atTime(clockOut)
+        } else {
+            date.plusDays(1).atTime(clockOut)
+        }
+
+        return when {
+            now.isBefore(startAt) -> DailWorkStatusType.SCHEDULED
+            now.isBefore(endAt) -> DailWorkStatusType.IN_PROGRESS
+            else -> DailWorkStatusType.COMPLETED
+        }
     }
 
     private fun resolveMonthlyRepresentativePolicyOrNull(
