@@ -1,4 +1,4 @@
-package com.moa.controller
+package com.moa.controller.screen
 
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.auth.OnboardingAuth
