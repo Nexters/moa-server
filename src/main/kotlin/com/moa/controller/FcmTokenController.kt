@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
-@Tag(name = "fcm", description = "FCM TOKEN 갱신 및 삭제")
+@Tag(name = "fcm", description = "Fcm Token 갱신 및 삭제")
 @RestController
 @RequestMapping("/api/v1/fcm/token")
 class FcmTokenController(

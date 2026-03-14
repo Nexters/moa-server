@@ -8,7 +8,7 @@ import com.moa.service.notification.NotificationSettingService
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.*
 
-@Tag(name = "NotificationSetting", description = "알림 설정 API (근무/급여일/프로모션 알림)")
+@Tag(name = "NotificationSetting", description = "알림 설정 API")
 @RestController
 @RequestMapping("/api/v1/settings/notification")
 class NotificationSettingController(

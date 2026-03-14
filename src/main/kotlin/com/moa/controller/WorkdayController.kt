@@ -11,7 +11,7 @@ import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
-@Tag(name = "Workday", description = "근무일/스케줄 API (출퇴근 일정 조회·등록·수정)")
+@Tag(name = "Workday", description = "근무일/스케줄 API")
 @RestController
 @RequestMapping("/api/v1/workdays")
 class WorkdayController(
