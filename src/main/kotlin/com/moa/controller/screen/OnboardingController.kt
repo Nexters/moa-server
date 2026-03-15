@@ -1,4 +1,4 @@
-package com.moa.controller
+package com.moa.controller.screen
 
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.auth.OnboardingAuth
@@ -12,7 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
-@Tag(name = "Onboarding", description = "온보딩 API (최초 가입 시 프로필/급여/근무정책/약관 설정)")
+@Tag(name = "Onboarding", description = "온보딩 화면 API")
 @RestController
 @RequestMapping("/api/v1/onboarding")
 class OnboardingController(

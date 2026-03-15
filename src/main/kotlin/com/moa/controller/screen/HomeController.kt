@@ -1,4 +1,4 @@
-package com.moa.controller
+package com.moa.controller.screen
 
 import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
@@ -32,6 +32,7 @@ class HomeController(
                 standardSalary = earnings.standardSalary,
                 dailyPay = schedule.dailyPay,
                 type = schedule.type,
+                status = schedule.status,
                 clockInTime = schedule.clockInTime,
                 clockOutTime = schedule.clockOutTime,
             )

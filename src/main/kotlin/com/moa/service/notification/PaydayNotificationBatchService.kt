@@ -2,12 +2,12 @@ package com.moa.service.notification
 
 import com.moa.entity.*
 import com.moa.repository.*
+import com.moa.service.resolveEffectivePayday
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.YearMonth
 
 @Service
 class PaydayNotificationBatchService(
@@ -49,14 +49,14 @@ class PaydayNotificationBatchService(
     }
 
     private fun findPaydayProfiles(date: LocalDate): List<Profile> {
-        val dayOfMonth = date.dayOfMonth
-        val lastDayOfMonth = YearMonth.from(date).atEndOfMonth().dayOfMonth
-        val paydayDays = if (dayOfMonth == lastDayOfMonth) {
-            (dayOfMonth..31).toList()
-        } else {
-            listOf(dayOfMonth)
+        val candidatePaydayDays = (1..31)
+            .filter { resolveEffectivePayday(date.year, date.monthValue, it) == date }
+
+        if (candidatePaydayDays.isEmpty()) {
+            return emptyList()
         }
-        return profileRepository.findAllByPaydayDayIn(paydayDays)
+
+        return profileRepository.findAllByPaydayDayIn(candidatePaydayDays)
     }
 
     private fun findRequiredTermCodes(): Set<String> =

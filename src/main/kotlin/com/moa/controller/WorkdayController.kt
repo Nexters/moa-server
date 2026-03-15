@@ -11,19 +11,14 @@ import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 
-@Tag(name = "Workday", description = "근무일/스케줄 API (출퇴근 일정 조회·등록·수정)")
+@Tag(name = "Workday", description = "근무일/스케줄 API")
 @RestController
 @RequestMapping("/api/v1/workdays")
 class WorkdayController(
     private val workdayService: WorkdayService,
 ) {
 
-    @GetMapping("/{date}")
-    fun getSchedule(
-        @Auth member: AuthMemberInfo,
-        @PathVariable date: LocalDate,
-    ) = ApiResponse.success(workdayService.getSchedule(member.id, date))
-
+    @Deprecated("Use GET /api/v1/calendar instead")
     @GetMapping("/earnings")
     fun getMonthlyEarnings(
         @Auth member: AuthMemberInfo,
@@ -31,6 +26,7 @@ class WorkdayController(
         @RequestParam month: Int,
     ) = ApiResponse.success(workdayService.getMonthlyEarnings(member.id, year, month))
 
+    @Deprecated("Use GET /api/v1/calendar instead")
     @GetMapping
     fun getMonthlySchedules(
         @Auth member: AuthMemberInfo,
@@ -39,7 +35,14 @@ class WorkdayController(
     ) = ApiResponse.success(
         workdayService.getMonthlySchedules(member.id, year, month)
     )
-    
+
+    @Deprecated("Use GET /api/v1/calendar instead")
+    @GetMapping("/{date}")
+    fun getSchedule(
+        @Auth member: AuthMemberInfo,
+        @PathVariable date: LocalDate,
+    ) = ApiResponse.success(workdayService.getSchedule(member.id, date))
+
     @PutMapping("/{date}")
     fun upsertSchedule(
         @Auth member: AuthMemberInfo,

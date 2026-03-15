@@ -3,11 +3,9 @@ package com.moa.service
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
-import com.moa.entity.DailyWorkSchedule
-import com.moa.entity.DailyWorkScheduleType
-import com.moa.entity.SalaryCalculator
-import com.moa.entity.WorkPolicyVersion
+import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
+import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
 import com.moa.service.dto.*
 import com.moa.service.notification.NotificationSyncService
@@ -15,30 +13,117 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Service
 class WorkdayService(
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
+    private val profileRepository: ProfileRepository,
     private val notificationSyncService: NotificationSyncService,
     private val earningsCalculator: EarningsCalculator,
 ) {
 
     @Transactional(readOnly = true)
-    fun getSchedule(
-        memberId: Long,
-        date: LocalDate,
-    ): WorkdayResponse {
-        val saved = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
-        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
-        val schedule =
-            if (policy == null) {
-                ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
-            } else {
-                resolveScheduleForDate(saved, policy, date)
+    fun getMonthlyWorkdays(memberId: Long, year: Int, month: Int): List<WorkdayResponse> {
+        val start = LocalDate.of(year, month, 1)
+        val end = start.withDayOfMonth(start.lengthOfMonth())
+
+        val savedSchedulesByDate =
+            dailyWorkScheduleRepository
+                .findAllByMemberIdAndDateBetween(memberId, start, end)
+                .associateBy { it.date }
+
+        val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
+        val paydayDay = resolvePaydayDay(memberId)
+
+        return generateSequence(start) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(end) }
+            .map { date ->
+                val schedule =
+                    if (monthlyPolicy == null) {
+                        ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
+                    } else {
+                        resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+                    }
+                createWorkdayResponse(memberId, date, schedule, monthlyPolicy, paydayDay)
             }
-        return createWorkdayResponse(memberId, date, schedule)
+            .toList()
+    }
+
+    @Transactional(readOnly = true)
+    fun getMonthlyEarnings(memberId: Long, year: Int, month: Int): MonthlyEarningsResponse {
+        val start = LocalDate.of(year, month, 1)
+        val end = start.withDayOfMonth(start.lengthOfMonth())
+        val today = LocalDate.now()
+        val defaultSalary = earningsCalculator.getDefaultMonthlySalary(memberId, start) ?: 0
+
+        val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
+        if (monthlyPolicy == null) {
+            return MonthlyEarningsResponse(
+                workedEarnings = 0,
+                standardSalary = defaultSalary,
+                workedMinutes = 0,
+                standardMinutes = 0,
+            )
+        }
+
+        val policyDailyMinutes = SalaryCalculator.calculateWorkMinutes(
+            monthlyPolicy.clockInTime, monthlyPolicy.clockOutTime,
+        )
+
+        val policyWorkDayOfWeeks = monthlyPolicy.workdays.map { it.dayOfWeek }.toSet()
+        val workDaysInMonth = SalaryCalculator.getWorkDaysInPeriod(
+            start = start,
+            end = end.plusDays(1),
+            workDays = policyWorkDayOfWeeks
+        )
+
+        val standardMinutes = policyDailyMinutes * workDaysInMonth
+
+        if (start.isAfter(today)) {
+            return MonthlyEarningsResponse(0, defaultSalary, 0, standardMinutes)
+        }
+
+        val lastCalculableDate = minOf(end, today)
+
+        val savedSchedulesByDate = dailyWorkScheduleRepository
+            .findAllByMemberIdAndDateBetween(memberId, start, lastCalculableDate)
+            .associateBy { it.date }
+
+        var totalEarnings = BigDecimal.ZERO
+        var workedMinutes = 0L
+        val now = LocalTime.now()
+
+        var date = start
+        while (!date.isAfter(lastCalculableDate)) {
+            val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+            val status = resolveDailyWorkStatus(date, schedule)
+            val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
+            val isCompletedWork = status == DailyWorkStatusType.COMPLETED &&
+                    (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
+
+            if (isCompletedWork && schedule.clockIn != null && adjustedClockOut != null) {
+                workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
+            }
+
+            if (isCompletedWork) {
+                val dailyEarnings = earningsCalculator.calculateDailyEarnings(
+                    memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, adjustedClockOut,
+                )
+                totalEarnings = totalEarnings.add(dailyEarnings ?: BigDecimal.ZERO)
+            }
+
+            date = date.plusDays(1)
+        }
+
+        return MonthlyEarningsResponse(
+            workedEarnings = totalEarnings.toLong(),
+            standardSalary = defaultSalary,
+            workedMinutes = workedMinutes,
+            standardMinutes = standardMinutes,
+        )
     }
 
     @Transactional(readOnly = true)
@@ -70,6 +155,22 @@ class WorkdayService(
                 MonthlyWorkdayResponse(date = date, type = schedule.type)
             }
             .toList()
+    }
+
+    @Transactional(readOnly = true)
+    fun getSchedule(
+        memberId: Long,
+        date: LocalDate,
+    ): WorkdayResponse {
+        val saved = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
+        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
+        val schedule =
+            if (policy == null) {
+                ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
+            } else {
+                resolveScheduleForDate(saved, policy, date)
+            }
+        return createWorkdayResponse(memberId, date, schedule, policy, resolvePaydayDay(memberId))
     }
 
     @Transactional
@@ -122,7 +223,13 @@ class WorkdayService(
         )
 
         val schedule = ResolvedSchedule(savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime)
-        return createWorkdayResponse(memberId, date, schedule)
+        return createWorkdayResponse(
+            memberId,
+            date,
+            schedule,
+            resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue),
+            resolvePaydayDay(memberId),
+        )
     }
 
     @Transactional
@@ -155,75 +262,12 @@ class WorkdayService(
         )
 
         val schedule = ResolvedSchedule(savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime)
-        return createWorkdayResponse(memberId, date, schedule)
-    }
-
-    @Transactional(readOnly = true)
-    fun getMonthlyEarnings(memberId: Long, year: Int, month: Int): MonthlyEarningsResponse {
-        val start = LocalDate.of(year, month, 1)
-        val end = start.withDayOfMonth(start.lengthOfMonth())
-        val today = LocalDate.now()
-        val defaultSalary = earningsCalculator.getDefaultMonthlySalary(memberId, start) ?: 0
-
-        val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
-        if (monthlyPolicy == null) {
-            return MonthlyEarningsResponse(
-                workedEarnings = 0,
-                standardSalary = defaultSalary,
-                workedMinutes = 0,
-                standardMinutes = 0,
-            )
-        }
-
-        val policyDailyMinutes = SalaryCalculator.calculateWorkMinutes(
-            monthlyPolicy.clockInTime, monthlyPolicy.clockOutTime,
-        )
-
-        val policyWorkDayOfWeeks = monthlyPolicy.workdays.map { it.dayOfWeek }.toSet()
-        val workDaysInMonth = SalaryCalculator.getWorkDaysInPeriod(
-            start = start,
-            end = end.plusDays(1),
-            workDays = policyWorkDayOfWeeks
-        )
-
-        val standardMinutes = policyDailyMinutes * workDaysInMonth
-
-        if (start.isAfter(today)) {
-            return MonthlyEarningsResponse(0, defaultSalary, 0, standardMinutes)
-        }
-
-        val lastCalculableDate = minOf(end, today.minusDays(1))
-
-        val savedSchedulesByDate = dailyWorkScheduleRepository
-            .findAllByMemberIdAndDateBetween(memberId, start, lastCalculableDate)
-            .associateBy { it.date }
-
-        var totalEarnings = BigDecimal.ZERO
-        var workedMinutes = 0L
-
-        var date = start
-        while (!date.isAfter(lastCalculableDate)) {
-            val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
-
-            if ((schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
-                && schedule.clockIn != null && schedule.clockOut != null
-            ) {
-                workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, schedule.clockOut)
-            }
-
-            val dailyEarnings = earningsCalculator.calculateDailyEarnings(
-                memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, schedule.clockOut,
-            )
-            totalEarnings = totalEarnings.add(dailyEarnings ?: BigDecimal.ZERO)
-
-            date = date.plusDays(1)
-        }
-
-        return MonthlyEarningsResponse(
-            workedEarnings = totalEarnings.toLong(),
-            standardSalary = defaultSalary,
-            workedMinutes = workedMinutes,
-            standardMinutes = standardMinutes,
+        return createWorkdayResponse(
+            memberId,
+            date,
+            schedule,
+            resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue),
+            resolvePaydayDay(memberId),
         )
     }
 
@@ -247,28 +291,37 @@ class WorkdayService(
         memberId: Long,
         date: LocalDate,
         schedule: ResolvedSchedule,
+        policy: WorkPolicyVersion?,
+        paydayDay: Int,
     ): WorkdayResponse {
+        val events = resolveDailyEvents(date, paydayDay)
+
         if (schedule.type == DailyWorkScheduleType.NONE) {
             return WorkdayResponse(
                 date = date,
                 type = DailyWorkScheduleType.NONE,
+                status = DailyWorkStatusType.NONE,
+                events = events,
                 dailyPay = 0,
             )
         }
-        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
-            ?: return WorkdayResponse(
-                date = date,
-                type = schedule.type,
-                dailyPay = 0,
-                clockInTime = schedule.clockIn,
-                clockOutTime = schedule.clockOut,
-            )
+        val resolvedPolicy = policy ?: return WorkdayResponse(
+            date = date,
+            type = schedule.type,
+            status = resolveDailyWorkStatus(date, schedule),
+            events = events,
+            dailyPay = 0,
+            clockInTime = schedule.clockIn,
+            clockOutTime = schedule.clockOut,
+        )
         val earnings = earningsCalculator.calculateDailyEarnings(
-            memberId, date, policy, schedule.type, schedule.clockIn, schedule.clockOut,
+            memberId, date, resolvedPolicy, schedule.type, schedule.clockIn, schedule.clockOut,
         )
         return WorkdayResponse(
             date = date,
             type = schedule.type,
+            status = resolveDailyWorkStatus(date, schedule),
+            events = events,
             dailyPay = earnings?.toInt() ?: 0,
             clockInTime = schedule.clockIn,
             clockOutTime = schedule.clockOut,
@@ -289,6 +342,68 @@ class WorkdayService(
                 memberId,
                 lastDayOfMonth,
             )
+    }
+
+    private fun resolvePaydayDay(memberId: Long): Int =
+        profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()
+
+    private fun resolveDailyEvents(date: LocalDate, paydayDay: Int): List<DailyEventType> {
+        val events = mutableListOf<DailyEventType>()
+
+        if (isPayday(date, paydayDay)) {
+            events += DailyEventType.PAYDAY
+        }
+
+        // TODO: Add holiday event resolution when holiday data is available.
+
+        return events
+    }
+
+    private fun isPayday(date: LocalDate, paydayDay: Int): Boolean {
+        return resolveEffectivePayday(date.year, date.monthValue, paydayDay) == date
+    }
+
+    private fun resolveDailyWorkStatus(
+        date: LocalDate,
+        schedule: ResolvedSchedule,
+    ): DailyWorkStatusType {
+        if (schedule.type == DailyWorkScheduleType.NONE) return DailyWorkStatusType.NONE
+
+        val clockIn = schedule.clockIn ?: return DailyWorkStatusType.NONE
+        val clockOut = schedule.clockOut ?: return DailyWorkStatusType.NONE
+        val now = LocalDateTime.now()
+        val endAt = if (clockOut.isAfter(clockIn)) {
+            date.atTime(clockOut)
+        } else {
+            date.plusDays(1).atTime(clockOut)
+        }
+
+        return if (now.isBefore(endAt)) DailyWorkStatusType.SCHEDULED else DailyWorkStatusType.COMPLETED
+    }
+
+    private fun resolveClockOutForEarnings(
+        targetDate: LocalDate,
+        today: LocalDate,
+        now: LocalTime,
+        schedule: ResolvedSchedule,
+    ): LocalTime? {
+        if (targetDate != today ||
+            (schedule.type != DailyWorkScheduleType.WORK && schedule.type != DailyWorkScheduleType.VACATION)
+        ) {
+            return schedule.clockOut
+        }
+
+        val clockIn = schedule.clockIn ?: return schedule.clockOut
+        val clockOut = schedule.clockOut ?: return null
+
+        if (now.isBefore(clockIn)) {
+            return null
+        }
+
+        return when {
+            clockOut.isAfter(clockIn) -> minOf(now, clockOut)
+            else -> now
+        }
     }
 }
 
