@@ -101,18 +101,19 @@ class WorkdayService(
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
             val status = resolveDailWorkStatus(date, schedule)
             val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
-
-            if (status == DailWorkStatusType.COMPLETED &&
+            val isCompletedWork = status == DailWorkStatusType.COMPLETED &&
                 (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
-                && schedule.clockIn != null && adjustedClockOut != null
-            ) {
+
+            if (isCompletedWork && schedule.clockIn != null && adjustedClockOut != null) {
                 workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
             }
 
-            val dailyEarnings = earningsCalculator.calculateDailyEarnings(
-                memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, adjustedClockOut,
-            )
-            totalEarnings = totalEarnings.add(dailyEarnings ?: BigDecimal.ZERO)
+            if (isCompletedWork) {
+                val dailyEarnings = earningsCalculator.calculateDailyEarnings(
+                    memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, adjustedClockOut,
+                )
+                totalEarnings = totalEarnings.add(dailyEarnings ?: BigDecimal.ZERO)
+            }
 
             date = date.plusDays(1)
         }
