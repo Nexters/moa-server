@@ -7,11 +7,7 @@ import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
-import com.moa.service.dto.MonthlyEarningsResponse
-import com.moa.service.dto.MonthlyWorkdayResponse
-import com.moa.service.dto.WorkdayEditRequest
-import com.moa.service.dto.WorkdayResponse
-import com.moa.service.dto.WorkdayUpsertRequest
+import com.moa.service.dto.*
 import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -103,9 +99,11 @@ class WorkdayService(
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+            val status = resolveDailWorkStatus(date, schedule)
             val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
 
-            if ((schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
+            if (status == DailWorkStatusType.COMPLETED &&
+                (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
                 && schedule.clockIn != null && adjustedClockOut != null
             ) {
                 workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
@@ -316,6 +314,22 @@ class WorkdayService(
         )
     }
 
+    private fun resolveMonthlyRepresentativePolicyOrNull(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ): WorkPolicyVersion? {
+        val lastDayOfMonth =
+            LocalDate.of(year, month, 1)
+                .withDayOfMonth(LocalDate.of(year, month, 1).lengthOfMonth())
+
+        return workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                memberId,
+                lastDayOfMonth,
+            )
+    }
+
     private fun resolveCalendarEvents(memberId: Long, date: LocalDate): List<CalendarEventType> {
         val events = mutableListOf<CalendarEventType>()
         val paydayDay = profileRepository.findByMemberId(memberId)?.paydayDay
@@ -354,18 +368,13 @@ class WorkdayService(
         val clockIn = schedule.clockIn ?: return DailWorkStatusType.NONE
         val clockOut = schedule.clockOut ?: return DailWorkStatusType.NONE
         val now = LocalDateTime.now()
-        val startAt = date.atTime(clockIn)
         val endAt = if (clockOut.isAfter(clockIn)) {
             date.atTime(clockOut)
         } else {
             date.plusDays(1).atTime(clockOut)
         }
 
-        return when {
-            now.isBefore(startAt) -> DailWorkStatusType.SCHEDULED
-            now.isBefore(endAt) -> DailWorkStatusType.IN_PROGRESS
-            else -> DailWorkStatusType.COMPLETED
-        }
+        return if (now.isBefore(endAt)) DailWorkStatusType.SCHEDULED else DailWorkStatusType.COMPLETED
     }
 
     private fun resolveClockOutForEarnings(
@@ -391,22 +400,6 @@ class WorkdayService(
             clockOut.isAfter(clockIn) -> minOf(now, clockOut)
             else -> now
         }
-    }
-
-    private fun resolveMonthlyRepresentativePolicyOrNull(
-        memberId: Long,
-        year: Int,
-        month: Int,
-    ): WorkPolicyVersion? {
-        val lastDayOfMonth =
-            LocalDate.of(year, month, 1)
-                .withDayOfMonth(LocalDate.of(year, month, 1).lengthOfMonth())
-
-        return workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId,
-                lastDayOfMonth,
-            )
     }
 }
 
