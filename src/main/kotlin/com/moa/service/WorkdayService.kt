@@ -7,7 +7,11 @@ import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
-import com.moa.service.dto.*
+import com.moa.service.dto.MonthlyEarningsResponse
+import com.moa.service.dto.MonthlyWorkdayResponse
+import com.moa.service.dto.WorkdayEditRequest
+import com.moa.service.dto.WorkdayResponse
+import com.moa.service.dto.WorkdayUpsertRequest
 import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -27,7 +31,7 @@ class WorkdayService(
 ) {
 
     @Transactional(readOnly = true)
-    fun getCalendar(memberId: Long, year: Int, month: Int): CalendarResponse {
+    fun getMonthlyWorkdays(memberId: Long, year: Int, month: Int): List<WorkdayResponse> {
         val start = LocalDate.of(year, month, 1)
         val end = start.withDayOfMonth(start.lengthOfMonth())
 
@@ -38,21 +42,18 @@ class WorkdayService(
 
         val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
 
-        return CalendarResponse(
-            earnings = getMonthlyEarnings(memberId, year, month),
-            schedules = generateSequence(start) { it.plusDays(1) }
-                .takeWhile { !it.isAfter(end) }
-                .map { date ->
-                    val schedule =
-                        if (monthlyPolicy == null) {
-                            ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
-                        } else {
-                            resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
-                        }
-                    createWorkdayResponse(memberId, date, schedule)
-                }
-                .toList(),
-        )
+        return generateSequence(start) { it.plusDays(1) }
+            .takeWhile { !it.isAfter(end) }
+            .map { date ->
+                val schedule =
+                    if (monthlyPolicy == null) {
+                        ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
+                    } else {
+                        resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
+                    }
+                createWorkdayResponse(memberId, date, schedule)
+            }
+            .toList()
     }
 
     @Transactional(readOnly = true)

@@ -4,6 +4,7 @@ import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
 import com.moa.service.WorkdayService
+import com.moa.service.dto.CalendarResponse
 import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -22,5 +23,10 @@ class CalendarController(
         @Auth member: AuthMemberInfo,
         @RequestParam year: Int,
         @RequestParam month: Int,
-    ) = ApiResponse.success(workdayService.getCalendar(member.id, year, month))
+    ) = ApiResponse.success(
+        CalendarResponse(
+            earnings = workdayService.getMonthlyEarnings(member.id, year, month),
+            schedules = workdayService.getMonthlyWorkdays(member.id, year, month),
+        )
+    )
 }
