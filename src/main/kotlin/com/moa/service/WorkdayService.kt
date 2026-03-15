@@ -12,7 +12,6 @@ import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -37,6 +36,7 @@ class WorkdayService(
                 .associateBy { it.date }
 
         val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
+        val paydayDay = resolvePaydayDay(memberId)
 
         return generateSequence(start) { it.plusDays(1) }
             .takeWhile { !it.isAfter(end) }
@@ -47,7 +47,7 @@ class WorkdayService(
                     } else {
                         resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
                     }
-                createWorkdayResponse(memberId, date, schedule)
+                createWorkdayResponse(memberId, date, schedule, monthlyPolicy, paydayDay)
             }
             .toList()
     }
@@ -99,7 +99,7 @@ class WorkdayService(
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
-            val status = resolveDailWorkStatus(date, schedule)
+            val status = resolveDailyWorkStatus(date, schedule)
             val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
             val isCompletedWork = status == DailyWorkStatusType.COMPLETED &&
                     (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
@@ -170,7 +170,7 @@ class WorkdayService(
             } else {
                 resolveScheduleForDate(saved, policy, date)
             }
-        return createWorkdayResponse(memberId, date, schedule)
+        return createWorkdayResponse(memberId, date, schedule, policy, resolvePaydayDay(memberId))
     }
 
     @Transactional
@@ -223,7 +223,13 @@ class WorkdayService(
         )
 
         val schedule = ResolvedSchedule(savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime)
-        return createWorkdayResponse(memberId, date, schedule)
+        return createWorkdayResponse(
+            memberId,
+            date,
+            schedule,
+            resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue),
+            resolvePaydayDay(memberId),
+        )
     }
 
     @Transactional
@@ -256,7 +262,13 @@ class WorkdayService(
         )
 
         val schedule = ResolvedSchedule(savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime)
-        return createWorkdayResponse(memberId, date, schedule)
+        return createWorkdayResponse(
+            memberId,
+            date,
+            schedule,
+            resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue),
+            resolvePaydayDay(memberId),
+        )
     }
 
     private fun resolveScheduleForDate(
@@ -279,8 +291,10 @@ class WorkdayService(
         memberId: Long,
         date: LocalDate,
         schedule: ResolvedSchedule,
+        policy: WorkPolicyVersion?,
+        paydayDay: Int,
     ): WorkdayResponse {
-        val events = resolveDailyEvents(memberId, date)
+        val events = resolveDailyEvents(date, paydayDay)
 
         if (schedule.type == DailyWorkScheduleType.NONE) {
             return WorkdayResponse(
@@ -291,23 +305,22 @@ class WorkdayService(
                 dailyPay = 0,
             )
         }
-        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
-            ?: return WorkdayResponse(
-                date = date,
-                type = schedule.type,
-                status = resolveDailWorkStatus(date, schedule),
-                events = events,
-                dailyPay = 0,
-                clockInTime = schedule.clockIn,
-                clockOutTime = schedule.clockOut,
-            )
+        val resolvedPolicy = policy ?: return WorkdayResponse(
+            date = date,
+            type = schedule.type,
+            status = resolveDailyWorkStatus(date, schedule),
+            events = events,
+            dailyPay = 0,
+            clockInTime = schedule.clockIn,
+            clockOutTime = schedule.clockOut,
+        )
         val earnings = earningsCalculator.calculateDailyEarnings(
-            memberId, date, policy, schedule.type, schedule.clockIn, schedule.clockOut,
+            memberId, date, resolvedPolicy, schedule.type, schedule.clockIn, schedule.clockOut,
         )
         return WorkdayResponse(
             date = date,
             type = schedule.type,
-            status = resolveDailWorkStatus(date, schedule),
+            status = resolveDailyWorkStatus(date, schedule),
             events = events,
             dailyPay = earnings?.toInt() ?: 0,
             clockInTime = schedule.clockIn,
@@ -331,11 +344,13 @@ class WorkdayService(
             )
     }
 
-    private fun resolveDailyEvents(memberId: Long, date: LocalDate): List<DailyEventType> {
-        val events = mutableListOf<DailyEventType>()
-        val paydayDay = profileRepository.findByMemberId(memberId)?.paydayDay
+    private fun resolvePaydayDay(memberId: Long): Int =
+        profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()
 
-        if (paydayDay != null && isPayday(date, paydayDay)) {
+    private fun resolveDailyEvents(date: LocalDate, paydayDay: Int): List<DailyEventType> {
+        val events = mutableListOf<DailyEventType>()
+
+        if (isPayday(date, paydayDay)) {
             events += DailyEventType.PAYDAY
         }
 
@@ -348,19 +363,7 @@ class WorkdayService(
         return resolveEffectivePayday(date.year, date.monthValue, paydayDay) == date
     }
 
-    // 월급일이 해당 월에 없으면 말일로 보정하고, 그 날짜가 주말이면 직전 금요일로 당긴다.
-    private fun resolveEffectivePayday(year: Int, month: Int, paydayDay: Int): LocalDate {
-        val baseDate = LocalDate.of(year, month, 1)
-            .withDayOfMonth(minOf(paydayDay, LocalDate.of(year, month, 1).lengthOfMonth()))
-
-        return when (baseDate.dayOfWeek) {
-            DayOfWeek.SATURDAY -> baseDate.minusDays(1)
-            DayOfWeek.SUNDAY -> baseDate.minusDays(2)
-            else -> baseDate
-        }
-    }
-
-    private fun resolveDailWorkStatus(
+    private fun resolveDailyWorkStatus(
         date: LocalDate,
         schedule: ResolvedSchedule,
     ): DailyWorkStatusType {
