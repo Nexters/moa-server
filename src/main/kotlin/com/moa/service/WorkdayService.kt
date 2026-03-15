@@ -101,8 +101,8 @@ class WorkdayService(
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
             val status = resolveDailWorkStatus(date, schedule)
             val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
-            val isCompletedWork = status == DailWorkStatusType.COMPLETED &&
-                (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
+            val isCompletedWork = status == DailyWorkStatusType.COMPLETED &&
+                    (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
 
             if (isCompletedWork && schedule.clockIn != null && adjustedClockOut != null) {
                 workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
@@ -280,13 +280,13 @@ class WorkdayService(
         date: LocalDate,
         schedule: ResolvedSchedule,
     ): WorkdayResponse {
-        val events = resolveCalendarEvents(memberId, date)
+        val events = resolveDailyEvents(memberId, date)
 
         if (schedule.type == DailyWorkScheduleType.NONE) {
             return WorkdayResponse(
                 date = date,
                 type = DailyWorkScheduleType.NONE,
-                status = DailWorkStatusType.NONE,
+                status = DailyWorkStatusType.NONE,
                 events = events,
                 dailyPay = 0,
             )
@@ -331,12 +331,12 @@ class WorkdayService(
             )
     }
 
-    private fun resolveCalendarEvents(memberId: Long, date: LocalDate): List<CalendarEventType> {
-        val events = mutableListOf<CalendarEventType>()
+    private fun resolveDailyEvents(memberId: Long, date: LocalDate): List<DailyEventType> {
+        val events = mutableListOf<DailyEventType>()
         val paydayDay = profileRepository.findByMemberId(memberId)?.paydayDay
 
         if (paydayDay != null && isPayday(date, paydayDay)) {
-            events += CalendarEventType.PAYDAY
+            events += DailyEventType.PAYDAY
         }
 
         // TODO: Add holiday event resolution when holiday data is available.
@@ -363,11 +363,11 @@ class WorkdayService(
     private fun resolveDailWorkStatus(
         date: LocalDate,
         schedule: ResolvedSchedule,
-    ): DailWorkStatusType {
-        if (schedule.type == DailyWorkScheduleType.NONE) return DailWorkStatusType.NONE
+    ): DailyWorkStatusType {
+        if (schedule.type == DailyWorkScheduleType.NONE) return DailyWorkStatusType.NONE
 
-        val clockIn = schedule.clockIn ?: return DailWorkStatusType.NONE
-        val clockOut = schedule.clockOut ?: return DailWorkStatusType.NONE
+        val clockIn = schedule.clockIn ?: return DailyWorkStatusType.NONE
+        val clockOut = schedule.clockOut ?: return DailyWorkStatusType.NONE
         val now = LocalDateTime.now()
         val endAt = if (clockOut.isAfter(clockIn)) {
             date.atTime(clockOut)
@@ -375,7 +375,7 @@ class WorkdayService(
             date.plusDays(1).atTime(clockOut)
         }
 
-        return if (now.isBefore(endAt)) DailWorkStatusType.SCHEDULED else DailWorkStatusType.COMPLETED
+        return if (now.isBefore(endAt)) DailyWorkStatusType.SCHEDULED else DailyWorkStatusType.COMPLETED
     }
 
     private fun resolveClockOutForEarnings(

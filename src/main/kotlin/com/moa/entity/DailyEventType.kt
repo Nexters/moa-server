@@ -1,6 +1,6 @@
 package com.moa.entity
 
-enum class CalendarEventType {
+enum class DailyEventType {
     PAYDAY,
     HOLIDAY,
 }

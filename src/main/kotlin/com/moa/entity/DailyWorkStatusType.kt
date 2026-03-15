@@ -1,6 +1,6 @@
 package com.moa.entity
 
-enum class DailWorkStatusType {
+enum class DailyWorkStatusType {
     NONE,
     SCHEDULED,
     COMPLETED,
