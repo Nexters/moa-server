@@ -6,6 +6,7 @@ import com.moa.common.exception.UnauthorizedException
 import com.moa.repository.*
 import io.jsonwebtoken.ExpiredJwtException
 import jakarta.servlet.http.HttpServletRequest
+import org.slf4j.MDC
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.support.WebDataBinderFactory
@@ -37,6 +38,7 @@ class AuthMemberResolver(
         binderFactory: WebDataBinderFactory?,
     ): AuthMemberInfo {
         val memberId = resolveMemberId()
+        MDC.put("memberId", memberId.toString())
         validateOnboardingCompleted(memberId)
         return AuthMemberInfo(id = memberId)
     }

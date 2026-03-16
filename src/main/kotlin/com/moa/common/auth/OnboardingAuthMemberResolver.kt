@@ -4,6 +4,7 @@ import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.UnauthorizedException
 import io.jsonwebtoken.ExpiredJwtException
 import jakarta.servlet.http.HttpServletRequest
+import org.slf4j.MDC
 import org.springframework.core.MethodParameter
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.support.WebDataBinderFactory
@@ -37,6 +38,7 @@ class OnboardingAuthMemberResolver(
             val memberId = jwtTokenProvider.getUserIdFromToken(token)
                 ?: throw UnauthorizedException()
 
+            MDC.put("memberId", memberId.toString())
             return AuthMemberInfo(id = memberId)
         } catch (ex: ExpiredJwtException) {
             throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)

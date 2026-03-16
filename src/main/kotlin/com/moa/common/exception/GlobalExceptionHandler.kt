@@ -2,6 +2,7 @@ package com.moa.common.exception
 
 import com.moa.common.response.ApiResponse
 import com.moa.common.response.FieldError
+import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -26,14 +27,22 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     }
 
     @ExceptionHandler(UnauthorizedException::class)
-    fun handleUnauthorizedException(ex: UnauthorizedException): ResponseEntity<ApiResponse<Unit>> {
+    fun handleUnauthorizedException(
+        ex: UnauthorizedException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        log.warn("Unauthorized: {} {} - {}", request.method, request.requestURI, ex.errorCode)
         return ResponseEntity
             .status(HttpStatus.UNAUTHORIZED)
             .body(ApiResponse.error(ex.errorCode))
     }
 
     @ExceptionHandler(ForbiddenException::class)
-    fun handleForbiddenException(ex: ForbiddenException): ResponseEntity<ApiResponse<Unit>> {
+    fun handleForbiddenException(
+        ex: ForbiddenException,
+        request: HttpServletRequest,
+    ): ResponseEntity<ApiResponse<Unit>> {
+        log.warn("Forbidden: {} {} - {}", request.method, request.requestURI, ex.errorCode)
         return ResponseEntity
             .status(HttpStatus.FORBIDDEN)
             .body(ApiResponse.error(ex.errorCode))
