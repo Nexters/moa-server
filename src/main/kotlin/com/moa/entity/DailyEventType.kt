@@ -22,13 +22,11 @@ enum class DailyEventType {
         fun resolve(date: LocalDate, paydayDay: PaydayDay): List<DailyEventType> {
             val events = mutableListOf<DailyEventType>()
 
-            if (isPayday(date, paydayDay)) {
+            if (paydayDay.isPayday(date)) {
                 events += PAYDAY
             }
 
             return events
         }
-
-        private fun isPayday(date: LocalDate, paydayDay: PaydayDay): Boolean = paydayDay.isPayday(date)
     }
 }

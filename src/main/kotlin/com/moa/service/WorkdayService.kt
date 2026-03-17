@@ -113,9 +113,6 @@ class WorkdayService(
 
             if (isCompletedWork && schedule.clockIn != null && adjustedClockOut != null) {
                 workedMinutes += salaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
-            }
-
-            if (isCompletedWork) {
                 val dailyEarnings = earningsCalculator.calculateDailyEarnings(
                     memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, adjustedClockOut,
                 )
