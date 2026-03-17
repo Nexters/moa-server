@@ -1,6 +1,6 @@
 package com.moa.service
 
-import com.moa.entity.SalaryType
+import com.moa.entity.SalaryInputType
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -29,7 +29,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = monthlySalary,
             workDays = WEEKDAYS,
         )
@@ -48,7 +48,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.YEARLY,
+            salaryType = SalaryInputType.ANNUAL,
             salaryAmount = yearlySalary,
             workDays = WEEKDAYS,
         )
@@ -67,7 +67,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_100_000L,
             workDays = WEEKDAYS,
         )
@@ -83,7 +83,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_300_000L,
             workDays = WEEKDAYS,
         )
@@ -101,7 +101,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_000_000L,
             workDays = WEEKDAYS,
         )
@@ -117,7 +117,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_100_000L,
             workDays = WEEKDAYS,
         )
@@ -136,7 +136,7 @@ class SalaryCalculatorTest {
 
         val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_400_000L,
             workDays = sixDayWork,
         )
@@ -151,7 +151,7 @@ class SalaryCalculatorTest {
     fun `근무요일이 없으면 일급은 0을 반환한다`() {
         val result = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 2, 3),
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 3_000_000L,
             workDays = emptySet(),
         )
@@ -219,14 +219,14 @@ class SalaryCalculatorTest {
 
         val febResult = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 2, 1),
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = salary,
             workDays = WEEKDAYS,
         )
 
         val marResult = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 3, 1),
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = salary,
             workDays = WEEKDAYS,
         )

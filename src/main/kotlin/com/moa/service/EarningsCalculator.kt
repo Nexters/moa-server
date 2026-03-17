@@ -1,7 +1,7 @@
 package com.moa.service
 
 import com.moa.entity.DailyWorkScheduleType
-import com.moa.entity.SalaryType
+import com.moa.entity.SalaryInputType
 import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.PayrollVersionRepository
 import org.springframework.stereotype.Service
@@ -24,8 +24,8 @@ class EarningsCalculator(
      * 지정된 날짜가 속한 월을 기준으로 직원의 기본 월급을 계산합니다.
      *
      * 주어진 날짜가 속한 달의 마지막 날을 기준으로, 해당 시점에 유효한 가장 최근의 급여 정보를 바탕으로 계산합니다.
-     * 급여 유형이 연봉([SalaryType.YEARLY])인 경우 12로 나눈 후 소수점 첫째 자리에서 반올림(HALF_UP)한 값을 반환하며,
-     * 월급([SalaryType.MONTHLY])인 경우 계약된 금액을 그대로 반환합니다.
+     * 급여 유형이 연봉([SalaryInputType.ANNUAL])인 경우 12로 나눈 후 소수점 첫째 자리에서 반올림(HALF_UP)한 값을 반환하며,
+     * 월급([SalaryInputType.MONTHLY])인 경우 계약된 금액을 그대로 반환합니다.
      *
      * @param memberId 직원의 고유 식별자
      * @param date 기준 날짜 (이 날짜가 속한 월의 마지막 날을 기준으로 유효한 급여 정책을 적용합니다)
@@ -38,11 +38,11 @@ class EarningsCalculator(
                 memberId, lastDayOfMonth,
             ) ?: return null
 
-        return when (SalaryType.from(payroll.salaryInputType)) {
-            SalaryType.YEARLY -> payroll.salaryAmount.toBigDecimal()
+        return when (payroll.salaryInputType) {
+            SalaryInputType.ANNUAL -> payroll.salaryAmount.toBigDecimal()
                 .divide(BigDecimal(12), 0, RoundingMode.HALF_UP).toLong()
 
-            SalaryType.MONTHLY -> payroll.salaryAmount
+            SalaryInputType.MONTHLY -> payroll.salaryAmount
         }
     }
 
@@ -82,7 +82,7 @@ class EarningsCalculator(
 
         val dailyRate = salaryCalculator.calculateDailyRate(
             targetDate = date,
-            salaryType = SalaryType.from(payroll.salaryInputType),
+            salaryType = payroll.salaryInputType,
             salaryAmount = payroll.salaryAmount,
             workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
         )

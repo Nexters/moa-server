@@ -1,6 +1,6 @@
 package com.moa.service
 
-import com.moa.entity.SalaryType
+import com.moa.entity.SalaryInputType
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -17,7 +17,7 @@ class SalaryCalculator {
      * 특정 일자가 속한 달의 일일 급여(일급)를 계산합니다.
      *
      * 이 메서드는 직원의 월 기본급을 해당 월의 '총 소정 근로일수'로 나누어 일급을 산출합니다.
-     * 연봉([com.moa.entity.SalaryType.YEARLY])인 경우 금액을 12로 나누어 월 기본급을 먼저 구합니다.
+     * 연봉([SalaryInputType.ANNUAL])인 경우 금액을 12로 나누어 월 기본급을 먼저 구합니다.
      * 최종 산출된 일급은 소수점 첫째 자리에서 반올림([java.math.RoundingMode.HALF_UP]) 처리됩니다.
      *
      * @param targetDate 기준 일자 (이 일자가 속한 월을 기준으로 총 근로일수를 계산합니다)
@@ -28,13 +28,13 @@ class SalaryCalculator {
      */
     fun calculateDailyRate(
         targetDate: LocalDate,
-        salaryType: SalaryType,
+        salaryType: SalaryInputType,
         salaryAmount: Long,
         workDays: Set<DayOfWeek>
     ): BigDecimal {
         val monthlySalary = when (salaryType) {
-            SalaryType.YEARLY -> salaryAmount.toBigDecimal().divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
-            SalaryType.MONTHLY -> salaryAmount.toBigDecimal()
+            SalaryInputType.ANNUAL -> salaryAmount.toBigDecimal().divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
+            SalaryInputType.MONTHLY -> salaryAmount.toBigDecimal()
         }
 
         val yearMonth = YearMonth.from(targetDate)

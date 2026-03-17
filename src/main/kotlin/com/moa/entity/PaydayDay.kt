@@ -14,7 +14,7 @@ import java.time.YearMonth
  */
 @Embeddable
 data class PaydayDay(
-    @field:Column(name = "payday_day", nullable = false)
+    @Column(nullable = false)
     var value: Int = 25,
 ) {
     init {
