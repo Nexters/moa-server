@@ -372,7 +372,7 @@ class WorkdayService(
         val clockIn = schedule.clockIn ?: return DailyWorkStatusType.NONE
         val clockOut = schedule.clockOut ?: return DailyWorkStatusType.NONE
         val now = LocalDateTime.now()
-        val endAt = if (clockOut.isAfter(clockIn)) {
+        val endAt = if (!clockOut.isBefore(clockIn)) {
             date.atTime(clockOut)
         } else {
             date.plusDays(1).atTime(clockOut)
@@ -401,7 +401,7 @@ class WorkdayService(
         }
 
         return when {
-            clockOut.isAfter(clockIn) -> minOf(now, clockOut)
+            !clockOut.isBefore(clockIn) -> minOf(now, clockOut)
             else -> now
         }
     }
