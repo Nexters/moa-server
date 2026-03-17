@@ -54,12 +54,13 @@ class PaydayNotificationBatchService(
 
     private fun findPaydayProfiles(date: LocalDate): List<Profile> {
         val candidatePaydayDays = PaydayDay.resolvingTo(date)
+            .map { it.value }
 
         if (candidatePaydayDays.isEmpty()) {
             return emptyList()
         }
 
-        return profileRepository.findAllByPaydayDayIn(candidatePaydayDays)
+        return profileRepository.findAllByPaydayDay_ValueIn(candidatePaydayDays)
     }
 
     private fun findRequiredTermCodes(): Set<String> =
