@@ -96,8 +96,6 @@ class WorkdayService(
 
         var totalEarnings = BigDecimal.ZERO
         var workedMinutes = 0L
-        val now = LocalTime.now()
-
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
@@ -107,14 +105,13 @@ class WorkdayService(
                 clockIn = schedule.clockIn,
                 clockOut = schedule.clockOut,
             )
-            val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
             val isCompletedWork = status == DailyWorkStatusType.COMPLETED &&
                     (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
 
-            if (isCompletedWork && schedule.clockIn != null && adjustedClockOut != null) {
-                workedMinutes += salaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
+            if (isCompletedWork && schedule.clockIn != null && schedule.clockOut != null) {
+                workedMinutes += salaryCalculator.calculateWorkMinutes(schedule.clockIn, schedule.clockOut)
                 val dailyEarnings = earningsCalculator.calculateDailyEarnings(
-                    memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, adjustedClockOut,
+                    memberId, date, monthlyPolicy, schedule.type, schedule.clockIn, schedule.clockOut,
                 )
                 totalEarnings = totalEarnings.add(dailyEarnings ?: BigDecimal.ZERO)
             }
@@ -360,31 +357,6 @@ class WorkdayService(
 
     private fun resolvePaydayDay(memberId: Long): PaydayDay =
         profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()
-
-    private fun resolveClockOutForEarnings(
-        targetDate: LocalDate,
-        today: LocalDate,
-        now: LocalTime,
-        schedule: ResolvedSchedule,
-    ): LocalTime? {
-        if (targetDate != today ||
-            (schedule.type != DailyWorkScheduleType.WORK && schedule.type != DailyWorkScheduleType.VACATION)
-        ) {
-            return schedule.clockOut
-        }
-
-        val clockIn = schedule.clockIn ?: return schedule.clockOut
-        val clockOut = schedule.clockOut ?: return null
-
-        if (now.isBefore(clockIn)) {
-            return null
-        }
-
-        return when {
-            !clockOut.isBefore(clockIn) -> minOf(now, clockOut)
-            else -> now
-        }
-    }
 }
 
 private data class ResolvedSchedule(
