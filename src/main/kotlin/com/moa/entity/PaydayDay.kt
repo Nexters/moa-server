@@ -7,10 +7,10 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /**
- * 사용자가 설정한 급여일을 표현하는 Value Object 입니다.
+ * 사용자가 설정한 급여일을 표현하는 값 객체입니다.
  *
  * 급여일은 1일부터 31일 사이의 값만 허용하며,
- * 실제 급여일 계산 시 월말 보정 및 주말 보정 규칙을 함께 제공합니다.
+ * 실제 급여일 계산 시 월말 보정과 주말 보정 규칙을 함께 제공합니다.
  */
 @Embeddable
 data class PaydayDay(

@@ -21,7 +21,7 @@ enum class DailyWorkStatusType {
         /**
          * 특정 일자의 근무 스케줄 정보를 바탕으로 근무 상태를 판정합니다.
          *
-         * 근무 유형이 [DailyWorkScheduleType.NONE]이거나, 출근/퇴근 시간 중 하나라도 없으면
+         * 근무 유형이 [DailyWorkScheduleType.NONE]이거나 출근/퇴근 시간 중 하나라도 없으면
          * 상태를 판정할 수 없으므로 [NONE]을 반환합니다.
          * 퇴근 시간이 출근 시간보다 이른 경우에는 자정을 넘기는 근무로 간주하여 익일 종료 시각 기준으로 계산합니다.
          *
