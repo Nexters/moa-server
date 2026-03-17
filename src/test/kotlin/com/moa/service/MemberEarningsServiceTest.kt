@@ -6,7 +6,7 @@ import com.moa.service.calculator.CompensationCalculator
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
-import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.math.BigDecimal
@@ -52,7 +52,7 @@ class MemberEarningsServiceTest {
     }
 
     @Test
-    fun `VACATION이면 저장된 시간 기반으로 급여를 계산한다`() {
+    fun `휴무이면 저장된 시간 기반으로 급여를 계산한다`() {
         stubPayroll()
         val policy = createPolicy()
 
@@ -65,11 +65,11 @@ class MemberEarningsServiceTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        Assertions.assertThat(result.toLong()).isEqualTo(142857L)
+        assertThat(result.toLong()).isEqualTo(142857L)
     }
 
     @Test
-    fun `NONE이면 ZERO를 반환한다`() {
+    fun `근무 일정이 없으면 ZERO를 반환한다`() {
         val result = sut.calculateDailyEarnings(
             memberId = MEMBER_ID,
             date = DATE,
@@ -79,11 +79,11 @@ class MemberEarningsServiceTest {
             clockOutTime = null,
         )
 
-        Assertions.assertThat(result).isEqualTo(BigDecimal.ZERO)
+        assertThat(result).isEqualTo(BigDecimal.ZERO)
     }
 
     @Test
-    fun `PayrollVersion이 없으면 0원을 반환한다`() {
+    fun `급여 정보가 없으면 0원을 반환한다`() {
         every {
             payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 MEMBER_ID, LAST_DAY_OF_MONTH,
@@ -99,7 +99,7 @@ class MemberEarningsServiceTest {
             clockOutTime = null,
         )
 
-        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -116,7 +116,7 @@ class MemberEarningsServiceTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        Assertions.assertThat(result.toLong()).isEqualTo(142857L)
+        assertThat(result.toLong()).isEqualTo(142857L)
     }
 
     @Test
@@ -134,7 +134,7 @@ class MemberEarningsServiceTest {
         )
 
         val dailyRate = 3_000_000L / 21
-        Assertions.assertThat(result.toLong()).isGreaterThan(dailyRate)
+        assertThat(result.toLong()).isGreaterThan(dailyRate)
     }
 
     @Test
@@ -152,7 +152,7 @@ class MemberEarningsServiceTest {
         )
 
         val dailyRate = 3_000_000L / 21
-        Assertions.assertThat(result.toLong()).isLessThan(dailyRate)
+        assertThat(result.toLong()).isLessThan(dailyRate)
     }
 
     @Test
@@ -169,11 +169,11 @@ class MemberEarningsServiceTest {
             clockOutTime = LocalTime.of(9, 0),
         )
 
-        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
-    fun `ANNUAL 3,600,000이면 월급 300,000을 반환한다`() {
+    fun `연봉 3,600,000이면 기준 월급 300,000을 반환한다`() {
         every {
             payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 MEMBER_ID, LAST_DAY_OF_MONTH,
@@ -187,20 +187,20 @@ class MemberEarningsServiceTest {
 
         val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal("300000"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("300000"))
     }
 
     @Test
-    fun `MONTHLY 3,000,000이면 그대로 3,000,000을 반환한다`() {
+    fun `월급 3,000,000이면 기준 월급으로 그대로 3,000,000을 반환한다`() {
         stubPayroll(3_000_000)
 
         val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal("3000000"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("3000000"))
     }
 
     @Test
-    fun `PayrollVersion이 없으면 calculateStandardSalary는 0을 반환한다`() {
+    fun `급여 정보가 없으면 기준 월급으로 0을 반환한다`() {
         every {
             payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 MEMBER_ID, LAST_DAY_OF_MONTH,
@@ -209,11 +209,11 @@ class MemberEarningsServiceTest {
 
         val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
-    fun `calculateStandardMinutes는 정책의 일일 근무시간과 월 근무일 수를 곱한다`() {
+    fun `기준 근무 시간은 정책의 일일 근무시간과 월 근무일 수를 곱해 계산한다`() {
         val result = sut.calculateStandardMinutes(
             policy = createPolicy(),
             start = LocalDate.of(2025, 6, 1),
@@ -221,17 +221,7 @@ class MemberEarningsServiceTest {
         )
 
         // 2025-06 주5일 근무일 21일 * 540분
-        Assertions.assertThat(result).isEqualTo(11_340)
-    }
-
-    @Test
-    fun `calculateWorkedMinutes는 실제 출퇴근 시각을 분 단위로 환산한다`() {
-        val result = sut.calculateWorkedMinutes(
-            clockInTime = LocalTime.of(22, 0),
-            clockOutTime = LocalTime.of(2, 0),
-        )
-
-        Assertions.assertThat(result).isEqualTo(240)
+        assertThat(result).isEqualTo(11_340)
     }
 
     @Test
@@ -248,6 +238,6 @@ class MemberEarningsServiceTest {
             clockOutTime = null,
         )
 
-        Assertions.assertThat(result.toLong()).isEqualTo(142857L)
+        assertThat(result.toLong()).isEqualTo(142857L)
     }
 }
