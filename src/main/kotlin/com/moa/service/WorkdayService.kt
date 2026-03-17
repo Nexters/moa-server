@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Service
@@ -23,6 +22,7 @@ class WorkdayService(
     private val profileRepository: ProfileRepository,
     private val notificationSyncService: NotificationSyncService,
     private val earningsCalculator: EarningsCalculator,
+    private val salaryCalculator: SalaryCalculator,
 ) {
 
     @Transactional(readOnly = true)
@@ -69,12 +69,12 @@ class WorkdayService(
             )
         }
 
-        val policyDailyMinutes = SalaryCalculator.calculateWorkMinutes(
+        val policyDailyMinutes = salaryCalculator.calculateWorkMinutes(
             monthlyPolicy.clockInTime, monthlyPolicy.clockOutTime,
         )
 
         val policyWorkDayOfWeeks = monthlyPolicy.workdays.map { it.dayOfWeek }.toSet()
-        val workDaysInMonth = SalaryCalculator.getWorkDaysInPeriod(
+        val workDaysInMonth = salaryCalculator.getWorkDaysInPeriod(
             start = start,
             end = end.plusDays(1),
             workDays = policyWorkDayOfWeeks
@@ -110,7 +110,7 @@ class WorkdayService(
                     (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
 
             if (isCompletedWork && schedule.clockIn != null && adjustedClockOut != null) {
-                workedMinutes += SalaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
+                workedMinutes += salaryCalculator.calculateWorkMinutes(schedule.clockIn, adjustedClockOut)
             }
 
             if (isCompletedWork) {

@@ -1,5 +1,6 @@
 package com.moa.entity
 
+import com.moa.service.SalaryCalculator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
@@ -9,6 +10,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 class SalaryCalculatorTest {
+    private val salaryCalculator = SalaryCalculator()
 
     companion object {
         private val WEEKDAYS = setOf(
@@ -25,7 +27,7 @@ class SalaryCalculatorTest {
         val targetDate = LocalDate.of(2025, 2, 3)
         val monthlySalary = 3_000_000L
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.MONTHLY,
             salaryAmount = monthlySalary,
@@ -44,7 +46,7 @@ class SalaryCalculatorTest {
         val targetDate = LocalDate.of(2025, 2, 3)
         val yearlySalary = 36_000_000L
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.YEARLY,
             salaryAmount = yearlySalary,
@@ -63,7 +65,7 @@ class SalaryCalculatorTest {
         // 2025년 3월: 평일 21일
         val targetDate = LocalDate.of(2025, 3, 10)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.MONTHLY,
             salaryAmount = 2_100_000L,
@@ -79,7 +81,7 @@ class SalaryCalculatorTest {
         // 2025년 1월: 평일 23일
         val targetDate = LocalDate.of(2025, 1, 15)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.MONTHLY,
             salaryAmount = 2_300_000L,
@@ -97,7 +99,7 @@ class SalaryCalculatorTest {
         // 2025년 2월 (비윤년): 평일 20일
         val targetDate = LocalDate.of(2025, 2, 10)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.MONTHLY,
             salaryAmount = 2_000_000L,
@@ -113,7 +115,7 @@ class SalaryCalculatorTest {
         // 2024년 2월 (윤년): 평일 21일
         val targetDate = LocalDate.of(2024, 2, 10)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.MONTHLY,
             salaryAmount = 2_100_000L,
@@ -132,7 +134,7 @@ class SalaryCalculatorTest {
         // 2025년 2월: 월~토 = 24일
         val targetDate = LocalDate.of(2025, 2, 3)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
             salaryType = SalaryType.MONTHLY,
             salaryAmount = 2_400_000L,
@@ -147,7 +149,7 @@ class SalaryCalculatorTest {
 
     @Test
     fun `근무요일이 없으면 일급은 0을 반환한다`() {
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 2, 3),
             salaryType = SalaryType.MONTHLY,
             salaryAmount = 3_000_000L,
@@ -161,7 +163,7 @@ class SalaryCalculatorTest {
 
     @Test
     fun `calculateWorkMinutes - 9시에서 18시는 540분을 반환한다`() {
-        val result = SalaryCalculator.calculateWorkMinutes(
+        val result = salaryCalculator.calculateWorkMinutes(
             LocalTime.of(9, 0),
             LocalTime.of(18, 0),
         )
@@ -170,7 +172,7 @@ class SalaryCalculatorTest {
 
     @Test
     fun `calculateWorkMinutes - 자정넘김 22시에서 2시는 240분을 반환한다`() {
-        val result = SalaryCalculator.calculateWorkMinutes(
+        val result = salaryCalculator.calculateWorkMinutes(
             LocalTime.of(22, 0),
             LocalTime.of(2, 0),
         )
@@ -179,7 +181,7 @@ class SalaryCalculatorTest {
 
     @Test
     fun `calculateWorkMinutes - 시작시간과 종료시간이 같으면 0분을 반환한다`() {
-        val result = SalaryCalculator.calculateWorkMinutes(
+        val result = salaryCalculator.calculateWorkMinutes(
             LocalTime.of(9, 0),
             LocalTime.of(9, 0),
         )
@@ -191,7 +193,7 @@ class SalaryCalculatorTest {
     @Test
     fun `calculateEarnings - 실제 근무시간이 정책과 같으면 일급과 동일한 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
-        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 540)
+        val result = salaryCalculator.calculateEarnings(dailyRate, 540, 540)
         assertThat(result).isEqualByComparingTo(dailyRate)
     }
 
@@ -199,7 +201,7 @@ class SalaryCalculatorTest {
     fun `calculateEarnings - 초과 근무시 분급 기준으로 증가된 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
         // 540분 정책, 600분 실제 (1시간 초과)
-        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 600)
+        val result = salaryCalculator.calculateEarnings(dailyRate, 540, 600)
         assertThat(result).isGreaterThan(dailyRate)
     }
 
@@ -207,7 +209,7 @@ class SalaryCalculatorTest {
     fun `calculateEarnings - 조기 퇴근시 분급 기준으로 감소된 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
         // 540분 정책, 480분 실제 (1시간 조기 퇴근)
-        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 480)
+        val result = salaryCalculator.calculateEarnings(dailyRate, 540, 480)
         assertThat(result).isLessThan(dailyRate)
     }
 
@@ -215,14 +217,14 @@ class SalaryCalculatorTest {
     fun `같은 월급이라도 월마다 근무일수에 따라 일급이 달라진다`() {
         val salary = 3_000_000L
 
-        val febResult = SalaryCalculator.calculateDailyRate(
+        val febResult = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 2, 1),
             salaryType = SalaryType.MONTHLY,
             salaryAmount = salary,
             workDays = WEEKDAYS,
         )
 
-        val marResult = SalaryCalculator.calculateDailyRate(
+        val marResult = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 3, 1),
             salaryType = SalaryType.MONTHLY,
             salaryAmount = salary,

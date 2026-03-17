@@ -1,7 +1,6 @@
 package com.moa.service
 
 import com.moa.entity.DailyWorkScheduleType
-import com.moa.entity.SalaryCalculator
 import com.moa.entity.SalaryType
 import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.PayrollVersionRepository
@@ -19,6 +18,7 @@ import java.time.YearMonth
 @Service
 class EarningsCalculator(
     private val payrollVersionRepository: PayrollVersionRepository,
+    private val salaryCalculator: SalaryCalculator,
 ) {
     /**
      * 지정된 날짜가 속한 월을 기준으로 직원의 기본 월급을 계산합니다.
@@ -80,7 +80,7 @@ class EarningsCalculator(
                 memberId, lastDayOfMonth,
             ) ?: return null
 
-        val dailyRate = SalaryCalculator.calculateDailyRate(
+        val dailyRate = salaryCalculator.calculateDailyRate(
             targetDate = date,
             salaryType = SalaryType.from(payroll.salaryInputType),
             salaryAmount = payroll.salaryAmount,
@@ -89,11 +89,11 @@ class EarningsCalculator(
         if (dailyRate == BigDecimal.ZERO) return dailyRate
 
         if (clockInTime != null && clockOutTime != null) {
-            val policyMinutes = SalaryCalculator.calculateWorkMinutes(
+            val policyMinutes = salaryCalculator.calculateWorkMinutes(
                 policy.clockInTime, policy.clockOutTime,
             )
-            val actualMinutes = SalaryCalculator.calculateWorkMinutes(clockInTime, clockOutTime)
-            return SalaryCalculator.calculateEarnings(dailyRate, policyMinutes, actualMinutes)
+            val actualMinutes = salaryCalculator.calculateWorkMinutes(clockInTime, clockOutTime)
+            return salaryCalculator.calculateEarnings(dailyRate, policyMinutes, actualMinutes)
         }
 
         return dailyRate
