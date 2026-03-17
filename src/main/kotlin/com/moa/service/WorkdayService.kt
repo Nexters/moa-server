@@ -7,13 +7,10 @@ import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
-import com.moa.service.calculator.CompensationCalculator
-import com.moa.service.calculator.MemberEarningsService
 import com.moa.service.dto.*
 import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -25,7 +22,6 @@ class WorkdayService(
     private val profileRepository: ProfileRepository,
     private val notificationSyncService: NotificationSyncService,
     private val memberEarningsService: MemberEarningsService,
-    private val compensationCalculator: CompensationCalculator,
 ) {
 
     @Transactional(readOnly = true)
@@ -65,18 +61,7 @@ class WorkdayService(
             )
         }
 
-        val standardDailyMinutes = compensationCalculator.calculateWorkMinutes(
-            monthlyPolicy.clockInTime, monthlyPolicy.clockOutTime,
-        )
-
-        val standardWorkDays = monthlyPolicy.workdays.map { it.dayOfWeek }.toSet()
-        val standardWorkDaysCount = compensationCalculator.getWorkDaysInPeriod(
-            start = start,
-            end = end.plusDays(1),
-            workDays = standardWorkDays
-        )
-
-        val standardMinutes = standardDailyMinutes * standardWorkDaysCount
+        val standardMinutes = memberEarningsService.calculateStandardMinutes(monthlyPolicy, start, end)
 
         if (start.isAfter(today)) {
             return MonthlyEarningsResponse(0, standardSalary, 0, standardMinutes)
@@ -88,7 +73,7 @@ class WorkdayService(
             .findAllByMemberIdAndDateBetween(memberId, start, lastCalculableDate)
             .associateBy { it.date }
 
-        var workedEarnings = BigDecimal.ZERO
+        var workedEarnings = 0L
         var workedMinutes = 0L
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
@@ -102,7 +87,10 @@ class WorkdayService(
             val completedWork = resolveCompletedWorkForSettlement(schedule, status)
 
             if (completedWork != null) {
-                workedMinutes += compensationCalculator.calculateWorkMinutes(completedWork.clockIn, completedWork.clockOut)
+                workedMinutes += memberEarningsService.calculateWorkedMinutes(
+                    completedWork.clockIn,
+                    completedWork.clockOut,
+                )
                 val dailyEarnings = memberEarningsService.calculateDailyEarnings(
                     memberId,
                     date,
@@ -111,14 +99,14 @@ class WorkdayService(
                     completedWork.clockIn,
                     completedWork.clockOut,
                 )
-                workedEarnings = workedEarnings.add(dailyEarnings)
+                workedEarnings += dailyEarnings.toLong()
             }
 
             date = date.plusDays(1)
         }
 
         return MonthlyEarningsResponse(
-            workedEarnings = workedEarnings.toLong(),
+            workedEarnings = workedEarnings,
             standardSalary = standardSalary,
             workedMinutes = workedMinutes,
             standardMinutes = standardMinutes,

@@ -10,7 +10,7 @@ import java.time.*
  * 보상 산정에 필요한 계산 공식을 제공하는 서비스입니다.
  *
  * 이 클래스는 외부 데이터를 조회하지 않고, 일급 산정과 근무 시간 환산 같은 순수 계산만 담당합니다.
- * 회원별 급여 버전 조회나 정책 선택은 [MemberEarningsService]가 맡고, 이 클래스는 계산 공식 자체를 캡슐화합니다.
+ * 회원별 급여 버전 조회나 정책 선택은 [com.moa.service.MemberEarningsService]가 맡고, 이 클래스는 계산 공식 자체를 캡슐화합니다.
  */
 @Service
 class CompensationCalculator {

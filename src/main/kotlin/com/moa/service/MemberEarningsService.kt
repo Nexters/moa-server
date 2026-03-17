@@ -1,9 +1,10 @@
-package com.moa.service.calculator
+package com.moa.service
 
 import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.SalaryInputType
 import com.moa.entity.WorkPolicyVersion
 import com.moa.repository.PayrollVersionRepository
+import com.moa.service.calculator.CompensationCalculator
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -15,7 +16,7 @@ import java.time.YearMonth
  * 회원 단위의 급여 계산 유스케이스를 조합하는 서비스입니다.
  *
  * 급여 계약 이력 조회와 근무 정책 해석을 바탕으로 기준 월급과 특정 일자의 소득 계산을 조립합니다.
- * 실제 계산 공식은 [CompensationCalculator]에 위임하고, 이 서비스는 어떤 데이터를 기준으로 계산할지를 결정합니다.
+ * 실제 계산 공식은 [com.moa.service.calculator.CompensationCalculator]에 위임하고, 이 서비스는 어떤 데이터를 기준으로 계산할지를 결정합니다.
  */
 @Service
 class MemberEarningsService(
@@ -92,6 +93,37 @@ class MemberEarningsService(
 
         return dailyRate
     }
+
+    /**
+     * 월 집계 응답의 `standardMinutes`를 계산합니다.
+     *
+     * 기준 근무 시간은 정책의 일일 소정 근로 시간과 해당 기간의 근무일 수를 곱해 산출합니다.
+     * 계산 공식 자체는 [CompensationCalculator]에 위임하고, 이 메서드는 월 집계 용어에 맞는 진입점을 제공합니다.
+     */
+    fun calculateStandardMinutes(
+        policy: WorkPolicyVersion,
+        start: LocalDate,
+        endInclusive: LocalDate,
+    ): Long {
+        val standardDailyMinutes = compensationCalculator.calculateWorkMinutes(
+            policy.clockInTime, policy.clockOutTime,
+        )
+        val standardWorkDaysCount = compensationCalculator.getWorkDaysInPeriod(
+            start = start,
+            end = endInclusive.plusDays(1),
+            workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
+        )
+        return standardDailyMinutes * standardWorkDaysCount
+    }
+
+    /**
+     * 월 집계 응답의 `workedMinutes`를 계산합니다.
+     *
+     * `WorkdayService`가 근무 시간 계산 공식을 직접 알지 않도록,
+     * 실제 출퇴근 시각을 분 단위 근무 시간으로 환산하는 책임을 이 서비스로 모읍니다.
+     */
+    fun calculateWorkedMinutes(clockInTime: LocalTime, clockOutTime: LocalTime): Long =
+        compensationCalculator.calculateWorkMinutes(clockInTime, clockOutTime)
 
     /**
      * 월 기준 급여 버전 조회 규칙을 한 곳으로 고정하기 위한 헬퍼입니다.

@@ -208,4 +208,32 @@ class CompensationCalculatorTest {
 
         assertThat(result).isEqualByComparingTo(BigDecimal("88889"))
     }
+
+    @Test
+    fun `getWorkDaysInPeriod - 시작일 포함 종료일 제외 기준으로 근무일 수를 계산한다`() {
+        val result = compensationCalculator.getWorkDaysInPeriod(
+            start = LocalDate.of(2025, 6, 1),
+            end = LocalDate.of(2025, 7, 1),
+            workDays = setOf(
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY,
+            ),
+        )
+
+        assertThat(result).isEqualTo(21)
+    }
+
+    @Test
+    fun `getWorkDaysInPeriod - 종료일이 근무일이어도 제외한다`() {
+        val result = compensationCalculator.getWorkDaysInPeriod(
+            start = LocalDate.of(2025, 6, 2),
+            end = LocalDate.of(2025, 6, 9),
+            workDays = setOf(DayOfWeek.MONDAY),
+        )
+
+        assertThat(result).isEqualTo(1)
+    }
 }

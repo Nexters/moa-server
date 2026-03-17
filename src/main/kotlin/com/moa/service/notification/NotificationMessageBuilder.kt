@@ -5,7 +5,7 @@ import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationType
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.WorkPolicyVersionRepository
-import com.moa.service.calculator.MemberEarningsService
+import com.moa.service.MemberEarningsService
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.text.NumberFormat

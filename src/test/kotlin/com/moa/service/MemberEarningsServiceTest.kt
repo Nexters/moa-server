@@ -1,11 +1,12 @@
-package com.moa.service.calculator
+package com.moa.service
 
 import com.moa.entity.*
 import com.moa.repository.PayrollVersionRepository
+import com.moa.service.calculator.CompensationCalculator
 import io.mockk.every
 import io.mockk.junit5.MockKExtension
 import io.mockk.mockk
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.math.BigDecimal
@@ -64,7 +65,7 @@ class MemberEarningsServiceTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        assertThat(result.toLong()).isEqualTo(142857L)
+        Assertions.assertThat(result.toLong()).isEqualTo(142857L)
     }
 
     @Test
@@ -78,7 +79,7 @@ class MemberEarningsServiceTest {
             clockOutTime = null,
         )
 
-        assertThat(result).isEqualTo(BigDecimal.ZERO)
+        Assertions.assertThat(result).isEqualTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -98,7 +99,7 @@ class MemberEarningsServiceTest {
             clockOutTime = null,
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -115,7 +116,7 @@ class MemberEarningsServiceTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        assertThat(result.toLong()).isEqualTo(142857L)
+        Assertions.assertThat(result.toLong()).isEqualTo(142857L)
     }
 
     @Test
@@ -133,7 +134,7 @@ class MemberEarningsServiceTest {
         )
 
         val dailyRate = 3_000_000L / 21
-        assertThat(result.toLong()).isGreaterThan(dailyRate)
+        Assertions.assertThat(result.toLong()).isGreaterThan(dailyRate)
     }
 
     @Test
@@ -151,7 +152,7 @@ class MemberEarningsServiceTest {
         )
 
         val dailyRate = 3_000_000L / 21
-        assertThat(result.toLong()).isLessThan(dailyRate)
+        Assertions.assertThat(result.toLong()).isLessThan(dailyRate)
     }
 
     @Test
@@ -168,7 +169,7 @@ class MemberEarningsServiceTest {
             clockOutTime = LocalTime.of(9, 0),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -186,7 +187,7 @@ class MemberEarningsServiceTest {
 
         val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("300000"))
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal("300000"))
     }
 
     @Test
@@ -195,7 +196,7 @@ class MemberEarningsServiceTest {
 
         val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("3000000"))
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal("3000000"))
     }
 
     @Test
@@ -208,7 +209,29 @@ class MemberEarningsServiceTest {
 
         val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+    }
+
+    @Test
+    fun `calculateStandardMinutes는 정책의 일일 근무시간과 월 근무일 수를 곱한다`() {
+        val result = sut.calculateStandardMinutes(
+            policy = createPolicy(),
+            start = LocalDate.of(2025, 6, 1),
+            endInclusive = LocalDate.of(2025, 6, 30),
+        )
+
+        // 2025-06 주5일 근무일 21일 * 540분
+        Assertions.assertThat(result).isEqualTo(11_340)
+    }
+
+    @Test
+    fun `calculateWorkedMinutes는 실제 출퇴근 시각을 분 단위로 환산한다`() {
+        val result = sut.calculateWorkedMinutes(
+            clockInTime = LocalTime.of(22, 0),
+            clockOutTime = LocalTime.of(2, 0),
+        )
+
+        Assertions.assertThat(result).isEqualTo(240)
     }
 
     @Test
@@ -225,6 +248,6 @@ class MemberEarningsServiceTest {
             clockOutTime = null,
         )
 
-        assertThat(result.toLong()).isEqualTo(142857L)
+        Assertions.assertThat(result.toLong()).isEqualTo(142857L)
     }
 }
