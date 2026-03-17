@@ -1,6 +1,6 @@
 package com.moa.service.dto
 
-import com.moa.entity.NotificationSettingType
+import com.moa.entity.notification.NotificationSettingType
 
 data class NotificationSettingUpdateRequest(
     val type: NotificationSettingType,

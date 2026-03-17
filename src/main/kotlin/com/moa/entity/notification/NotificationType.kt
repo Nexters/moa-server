@@ -1,4 +1,4 @@
-package com.moa.entity
+package com.moa.entity.notification
 
 enum class NotificationType(
     val title: String,

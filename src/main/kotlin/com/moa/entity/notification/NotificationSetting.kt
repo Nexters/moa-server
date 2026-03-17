@@ -1,5 +1,6 @@
-package com.moa.entity
+package com.moa.entity.notification
 
+import com.moa.entity.BaseEntity
 import jakarta.persistence.*
 
 @Entity

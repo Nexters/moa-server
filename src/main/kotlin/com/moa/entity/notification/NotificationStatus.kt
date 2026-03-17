@@ -1,4 +1,4 @@
-package com.moa.entity
+package com.moa.entity.notification
 
 enum class NotificationStatus {
     PENDING,

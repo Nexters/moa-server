@@ -1,9 +1,9 @@
 package com.moa.service.notification
 
 import com.moa.entity.DailyWorkScheduleType
-import com.moa.entity.NotificationLog
-import com.moa.entity.NotificationStatus
-import com.moa.entity.NotificationType
+import com.moa.entity.notification.NotificationLog
+import com.moa.entity.notification.NotificationStatus
+import com.moa.entity.notification.NotificationType
 import com.moa.repository.NotificationLogRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service

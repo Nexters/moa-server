@@ -1,6 +1,9 @@
 package com.moa.service.notification
 
 import com.moa.entity.*
+import com.moa.entity.notification.NotificationLog
+import com.moa.entity.notification.NotificationSetting
+import com.moa.entity.notification.NotificationType
 import com.moa.repository.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
