@@ -159,6 +159,23 @@ class EarningsCalculatorTest {
         assertThat(result!!.toLong()).isLessThan(dailyRate)
     }
 
+    @Test
+    fun `출퇴근 시간이 같으면 0원을 반환한다`() {
+        stubPayroll()
+        val policy = createPolicy()
+
+        val result = sut.calculateDailyEarnings(
+            memberId = MEMBER_ID,
+            date = DATE,
+            policy = policy,
+            type = DailyWorkScheduleType.WORK,
+            clockInTime = LocalTime.of(9, 0),
+            clockOutTime = LocalTime.of(9, 0),
+        )
+
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+    }
+
     // --- getDefaultMonthlySalary ---
 
     @Test

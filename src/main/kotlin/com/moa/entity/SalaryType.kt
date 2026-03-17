@@ -72,8 +72,9 @@ object SalaryCalculator {
     /**
      * 출근 시간과 퇴근 시간 사이의 총 근무 시간을 분(minute) 단위로 계산합니다.
      *
-     * 퇴근 시간이 출근 시간보다 빠르거나 같은 경우, 익일 퇴근(야간 교대근무 등)으로 간주하여
+     * 퇴근 시간이 출근 시간보다 빠른 경우에만, 익일 퇴근(야간 교대근무 등)으로 간주하여
      * 자동으로 24시간(1440분)을 더하여 계산합니다.
+     * 출근 시간과 퇴근 시간이 같으면 0분으로 계산합니다.
      *
      * @param clockIn 출근 시간
      * @param clockOut 퇴근 시간
@@ -81,7 +82,7 @@ object SalaryCalculator {
      */
     fun calculateWorkMinutes(clockIn: LocalTime, clockOut: LocalTime): Long {
         val minutes = Duration.between(clockIn, clockOut).toMinutes()
-        return if (minutes <= 0) minutes + 24 * 60 else minutes
+        return if (minutes < 0) minutes + 24 * 60 else minutes
     }
 
     /**

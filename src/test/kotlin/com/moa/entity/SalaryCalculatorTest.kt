@@ -177,6 +177,15 @@ class SalaryCalculatorTest {
         assertThat(result).isEqualTo(240L)
     }
 
+    @Test
+    fun `calculateWorkMinutes - 시작시간과 종료시간이 같으면 0분을 반환한다`() {
+        val result = SalaryCalculator.calculateWorkMinutes(
+            LocalTime.of(9, 0),
+            LocalTime.of(9, 0),
+        )
+        assertThat(result).isEqualTo(0L)
+    }
+
     // --- 실제 수입 계산 ---
 
     @Test
