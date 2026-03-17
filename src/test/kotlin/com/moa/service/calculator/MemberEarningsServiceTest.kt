@@ -13,11 +13,11 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 @ExtendWith(MockKExtension::class)
-class EarningsCalculatorTest {
+class MemberEarningsServiceTest {
 
     private val payrollVersionRepository: PayrollVersionRepository = mockk()
-    private val salaryCalculator = SalaryCalculator()
-    private val sut = EarningsCalculator(payrollVersionRepository, salaryCalculator)
+    private val compensationCalculator = CompensationCalculator()
+    private val sut = MemberEarningsService(payrollVersionRepository, compensationCalculator)
 
     companion object {
         private const val MEMBER_ID = 1L
@@ -64,9 +64,7 @@ class EarningsCalculatorTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        // 정책 시간과 동일 → 일급 전액: 3,000,000 / 21 = 142,857
-        assertThat(result).isNotNull
-        assertThat(result!!.toLong()).isEqualTo(142857L)
+        assertThat(result.toLong()).isEqualTo(142857L)
     }
 
     @Test
@@ -84,7 +82,7 @@ class EarningsCalculatorTest {
     }
 
     @Test
-    fun `PayrollVersion이 없으면 null을 반환한다`() {
+    fun `PayrollVersion이 없으면 0원을 반환한다`() {
         every {
             payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 MEMBER_ID, LAST_DAY_OF_MONTH,
@@ -100,7 +98,7 @@ class EarningsCalculatorTest {
             clockOutTime = null,
         )
 
-        assertThat(result).isNull()
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -117,9 +115,7 @@ class EarningsCalculatorTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        // 3,000,000 / 21 workdays in June 2025 = 142,857
-        assertThat(result).isNotNull
-        assertThat(result!!.toLong()).isEqualTo(142857L)
+        assertThat(result.toLong()).isEqualTo(142857L)
     }
 
     @Test
@@ -133,12 +129,11 @@ class EarningsCalculatorTest {
             policy = policy,
             type = DailyWorkScheduleType.WORK,
             clockInTime = LocalTime.of(9, 0),
-            clockOutTime = LocalTime.of(19, 0), // 1시간 초과
+            clockOutTime = LocalTime.of(19, 0),
         )
 
         val dailyRate = 3_000_000L / 21
-        assertThat(result).isNotNull
-        assertThat(result!!.toLong()).isGreaterThan(dailyRate)
+        assertThat(result.toLong()).isGreaterThan(dailyRate)
     }
 
     @Test
@@ -152,12 +147,11 @@ class EarningsCalculatorTest {
             policy = policy,
             type = DailyWorkScheduleType.WORK,
             clockInTime = LocalTime.of(9, 0),
-            clockOutTime = LocalTime.of(17, 0), // 1시간 조기 퇴근
+            clockOutTime = LocalTime.of(17, 0),
         )
 
         val dailyRate = 3_000_000L / 21
-        assertThat(result).isNotNull
-        assertThat(result!!.toLong()).isLessThan(dailyRate)
+        assertThat(result.toLong()).isLessThan(dailyRate)
     }
 
     @Test
@@ -177,8 +171,6 @@ class EarningsCalculatorTest {
         assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
-    // --- getDefaultMonthlySalary ---
-
     @Test
     fun `ANNUAL 3,600,000이면 월급 300,000을 반환한다`() {
         every {
@@ -192,31 +184,31 @@ class EarningsCalculatorTest {
             salaryAmount = 3_600_000,
         )
 
-        val result = sut.getDefaultMonthlySalary(MEMBER_ID, DATE)
+        val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        assertThat(result).isEqualTo(300_000)
+        assertThat(result).isEqualByComparingTo(BigDecimal("300000"))
     }
 
     @Test
     fun `MONTHLY 3,000,000이면 그대로 3,000,000을 반환한다`() {
         stubPayroll(3_000_000)
 
-        val result = sut.getDefaultMonthlySalary(MEMBER_ID, DATE)
+        val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        assertThat(result).isEqualTo(3_000_000)
+        assertThat(result).isEqualByComparingTo(BigDecimal("3000000"))
     }
 
     @Test
-    fun `PayrollVersion이 없으면 getDefaultMonthlySalary는 null을 반환한다`() {
+    fun `PayrollVersion이 없으면 calculateStandardSalary는 0을 반환한다`() {
         every {
             payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 MEMBER_ID, LAST_DAY_OF_MONTH,
             )
         } returns null
 
-        val result = sut.getDefaultMonthlySalary(MEMBER_ID, DATE)
+        val result = sut.calculateStandardSalary(MEMBER_ID, DATE)
 
-        assertThat(result).isNull()
+        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     @Test
@@ -233,8 +225,6 @@ class EarningsCalculatorTest {
             clockOutTime = null,
         )
 
-        // 3,000,000 / 21 = 142,857
-        assertThat(result).isNotNull
-        assertThat(result!!.toLong()).isEqualTo(142857L)
+        assertThat(result.toLong()).isEqualTo(142857L)
     }
 }

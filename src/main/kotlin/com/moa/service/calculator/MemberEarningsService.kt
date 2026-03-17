@@ -12,17 +12,18 @@ import java.time.LocalTime
 import java.time.YearMonth
 
 /**
- * 회원의 급여 및 일일 소득을 계산하는 서비스입니다.
+ * 회원 단위의 급여 계산 유스케이스를 조합하는 서비스입니다.
  *
- * 급여 계약 이력과 근무 정책을 기반으로 월 기본급과 특정 일자의 발생 소득을 계산합니다.
+ * 급여 계약 이력 조회와 근무 정책 해석을 바탕으로 기준 월급과 특정 일자의 소득 계산을 조립합니다.
+ * 실제 계산 공식은 [CompensationCalculator]에 위임하고, 이 서비스는 어떤 데이터를 기준으로 계산할지를 결정합니다.
  */
 @Service
-class EarningsCalculator(
+class MemberEarningsService(
     private val payrollVersionRepository: PayrollVersionRepository,
-    private val salaryCalculator: SalaryCalculator,
+    private val compensationCalculator: CompensationCalculator,
 ) {
     /**
-     * 지정된 날짜가 속한 월을 기준으로 회원의 기본 월급을 계산합니다.
+     * 지정된 날짜가 속한 월을 기준으로 회원의 기준 월급을 계산합니다.
      *
      * 주어진 날짜가 속한 달의 마지막 날을 기준으로, 해당 시점에 유효한 가장 최근의 급여 정보를 바탕으로 계산합니다.
      * 급여 유형이 연봉([com.moa.entity.SalaryInputType.ANNUAL])인 경우 12로 나눈 후 소수점 첫째 자리에서 반올림(HALF_UP)한 값을 반환하며,
@@ -30,20 +31,16 @@ class EarningsCalculator(
      *
      * @param memberId 회원의 고유 식별자
      * @param date 기준 날짜 (이 날짜가 속한 월의 마지막 날을 기준으로 유효한 급여 정책을 적용합니다)
-     * @return 계산된 기본 월급 금액. 적용할 수 있는 급여 정보가 존재하지 않으면 `null`을 반환합니다.
+     * @return 계산된 기준 월급 금액. 해당 월에 적용할 수 있는 급여 정보가 없으면 `0`을 반환합니다.
      */
-    fun getDefaultMonthlySalary(memberId: Long, date: LocalDate): Long? {
-        val lastDayOfMonth = YearMonth.from(date).atEndOfMonth()
-        val payroll = payrollVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId, lastDayOfMonth,
-            ) ?: return null
+    fun calculateStandardSalary(memberId: Long, date: LocalDate): BigDecimal {
+        val payroll = findPayrollForMonth(memberId, date) ?: return BigDecimal.ZERO
 
         return when (payroll.salaryInputType) {
             SalaryInputType.ANNUAL -> payroll.salaryAmount.toBigDecimal()
-                .divide(BigDecimal(12), 0, RoundingMode.HALF_UP).toLong()
+                .divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
 
-            SalaryInputType.MONTHLY -> payroll.salaryAmount
+            SalaryInputType.MONTHLY -> payroll.salaryAmount.toBigDecimal()
         }
     }
 
@@ -63,7 +60,7 @@ class EarningsCalculator(
      * @param type 대상 일자의 근무 일정 유형 (예: 근무, 휴무 등)
      * @param clockInTime 실제 출근 시간. (기록이 없을 경우 `null`)
      * @param clockOutTime 실제 퇴근 시간. (기록이 없을 경우 `null`)
-     * @return 계산된 일일 소득 금액. 적용할 수 있는 급여 정보가 존재하지 않으면 `null`을 반환합니다.
+     * @return 계산된 일일 소득 금액. 해당 월에 적용할 수 있는 급여 정보가 없으면 `0`을 반환합니다.
      */
     fun calculateDailyEarnings(
         memberId: Long,
@@ -72,16 +69,12 @@ class EarningsCalculator(
         type: DailyWorkScheduleType,
         clockInTime: LocalTime?,
         clockOutTime: LocalTime?,
-    ): BigDecimal? {
+    ): BigDecimal {
         if (type == DailyWorkScheduleType.NONE) return BigDecimal.ZERO
 
-        val lastDayOfMonth = YearMonth.from(date).atEndOfMonth()
-        val payroll = payrollVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId, lastDayOfMonth,
-            ) ?: return null
+        val payroll = findPayrollForMonth(memberId, date) ?: return BigDecimal.ZERO
 
-        val dailyRate = salaryCalculator.calculateDailyRate(
+        val dailyRate = compensationCalculator.calculateDailyRate(
             targetDate = date,
             salaryType = payroll.salaryInputType,
             salaryAmount = payroll.salaryAmount,
@@ -90,13 +83,24 @@ class EarningsCalculator(
         if (dailyRate == BigDecimal.ZERO) return dailyRate
 
         if (clockInTime != null && clockOutTime != null) {
-            val policyMinutes = salaryCalculator.calculateWorkMinutes(
+            val policyMinutes = compensationCalculator.calculateWorkMinutes(
                 policy.clockInTime, policy.clockOutTime,
             )
-            val actualMinutes = salaryCalculator.calculateWorkMinutes(clockInTime, clockOutTime)
-            return salaryCalculator.calculateEarnings(dailyRate, policyMinutes, actualMinutes)
+            val actualMinutes = compensationCalculator.calculateWorkMinutes(clockInTime, clockOutTime)
+            return compensationCalculator.calculateEarnings(dailyRate, policyMinutes, actualMinutes)
         }
 
         return dailyRate
     }
+
+    /**
+     * 월 기준 급여 버전 조회 규칙을 한 곳으로 고정하기 위한 헬퍼입니다.
+     *
+     * 월급 계산과 일소득 계산이 모두 같은 기준일을 사용해야 하므로,
+     * "해당 월 말일 시점에 유효한 최신 급여"라는 규칙을 중복 없이 재사용합니다.
+     */
+    private fun findPayrollForMonth(memberId: Long, date: LocalDate) =
+        payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+            memberId, YearMonth.from(date).atEndOfMonth(),
+        )
 }
