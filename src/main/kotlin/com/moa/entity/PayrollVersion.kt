@@ -23,7 +23,3 @@ class PayrollVersion(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long = 0
 }
-
-enum class SalaryInputType {
-    ANNUAL, MONTHLY
-}

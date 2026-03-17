@@ -1,11 +1,11 @@
 package com.moa.service.notification
 
 import com.moa.entity.DailyWorkScheduleType
-import com.moa.entity.NotificationLog
-import com.moa.entity.NotificationType
+import com.moa.entity.notification.NotificationLog
+import com.moa.entity.notification.NotificationType
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.WorkPolicyVersionRepository
-import com.moa.service.EarningsCalculator
+import com.moa.service.calculator.EarningsCalculator
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.text.NumberFormat

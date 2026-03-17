@@ -1,9 +1,9 @@
 package com.moa.service.notification
 
-import com.moa.entity.NotificationSetting
-import com.moa.entity.NotificationSettingType
 import com.moa.entity.Term
 import com.moa.entity.TermAgreement
+import com.moa.entity.notification.NotificationSetting
+import com.moa.entity.notification.NotificationSettingType
 import com.moa.repository.NotificationSettingRepository
 import com.moa.repository.TermAgreementRepository
 import com.moa.service.dto.NotificationSettingResponse

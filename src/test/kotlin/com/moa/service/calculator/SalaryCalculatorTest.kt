@@ -1,6 +1,7 @@
-package com.moa.entity
+package com.moa.service.calculator
 
-import org.assertj.core.api.Assertions.assertThat
+import com.moa.entity.SalaryInputType
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -9,6 +10,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 class SalaryCalculatorTest {
+    private val salaryCalculator = SalaryCalculator()
 
     companion object {
         private val WEEKDAYS = setOf(
@@ -25,15 +27,15 @@ class SalaryCalculatorTest {
         val targetDate = LocalDate.of(2025, 2, 3)
         val monthlySalary = 3_000_000L
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = monthlySalary,
             workDays = WEEKDAYS,
         )
 
         val expected = BigDecimal(3_000_000).divide(BigDecimal(20), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 연봉 기반 일급 계산 ---
@@ -44,16 +46,16 @@ class SalaryCalculatorTest {
         val targetDate = LocalDate.of(2025, 2, 3)
         val yearlySalary = 36_000_000L
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.YEARLY,
+            salaryType = SalaryInputType.ANNUAL,
             salaryAmount = yearlySalary,
             workDays = WEEKDAYS,
         )
 
         val expected = BigDecimal(36_000_000).divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
             .divide(BigDecimal(20), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 월별 근무일수 차이 ---
@@ -63,15 +65,15 @@ class SalaryCalculatorTest {
         // 2025년 3월: 평일 21일
         val targetDate = LocalDate.of(2025, 3, 10)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_100_000L,
             workDays = WEEKDAYS,
         )
 
         val expected = BigDecimal(2_100_000).divide(BigDecimal(21), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     @Test
@@ -79,15 +81,15 @@ class SalaryCalculatorTest {
         // 2025년 1월: 평일 23일
         val targetDate = LocalDate.of(2025, 1, 15)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_300_000L,
             workDays = WEEKDAYS,
         )
 
         val expected = BigDecimal(2_300_000).divide(BigDecimal(23), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 2월 처리 ---
@@ -97,15 +99,15 @@ class SalaryCalculatorTest {
         // 2025년 2월 (비윤년): 평일 20일
         val targetDate = LocalDate.of(2025, 2, 10)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_000_000L,
             workDays = WEEKDAYS,
         )
 
         val expected = BigDecimal(2_000_000).divide(BigDecimal(20), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     @Test
@@ -113,15 +115,15 @@ class SalaryCalculatorTest {
         // 2024년 2월 (윤년): 평일 21일
         val targetDate = LocalDate.of(2024, 2, 10)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_100_000L,
             workDays = WEEKDAYS,
         )
 
         val expected = BigDecimal(2_100_000).divide(BigDecimal(21), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 근무요일 설정 ---
@@ -132,58 +134,58 @@ class SalaryCalculatorTest {
         // 2025년 2월: 월~토 = 24일
         val targetDate = LocalDate.of(2025, 2, 3)
 
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = targetDate,
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 2_400_000L,
             workDays = sixDayWork,
         )
 
         val expected = BigDecimal(2_400_000).divide(BigDecimal(24), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 엣지 케이스 ---
 
     @Test
     fun `근무요일이 없으면 일급은 0을 반환한다`() {
-        val result = SalaryCalculator.calculateDailyRate(
+        val result = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 2, 3),
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = 3_000_000L,
             workDays = emptySet(),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     // --- 근무 시간(분) 계산 ---
 
     @Test
     fun `calculateWorkMinutes - 9시에서 18시는 540분을 반환한다`() {
-        val result = SalaryCalculator.calculateWorkMinutes(
+        val result = salaryCalculator.calculateWorkMinutes(
             LocalTime.of(9, 0),
             LocalTime.of(18, 0),
         )
-        assertThat(result).isEqualTo(540L)
+        Assertions.assertThat(result).isEqualTo(540L)
     }
 
     @Test
     fun `calculateWorkMinutes - 자정넘김 22시에서 2시는 240분을 반환한다`() {
-        val result = SalaryCalculator.calculateWorkMinutes(
+        val result = salaryCalculator.calculateWorkMinutes(
             LocalTime.of(22, 0),
             LocalTime.of(2, 0),
         )
-        assertThat(result).isEqualTo(240L)
+        Assertions.assertThat(result).isEqualTo(240L)
     }
 
     @Test
     fun `calculateWorkMinutes - 시작시간과 종료시간이 같으면 0분을 반환한다`() {
-        val result = SalaryCalculator.calculateWorkMinutes(
+        val result = salaryCalculator.calculateWorkMinutes(
             LocalTime.of(9, 0),
             LocalTime.of(9, 0),
         )
-        assertThat(result).isEqualTo(0L)
+        Assertions.assertThat(result).isEqualTo(0L)
     }
 
     // --- 실제 수입 계산 ---
@@ -191,45 +193,45 @@ class SalaryCalculatorTest {
     @Test
     fun `calculateEarnings - 실제 근무시간이 정책과 같으면 일급과 동일한 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
-        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 540)
-        assertThat(result).isEqualByComparingTo(dailyRate)
+        val result = salaryCalculator.calculateEarnings(dailyRate, 540, 540)
+        Assertions.assertThat(result).isEqualByComparingTo(dailyRate)
     }
 
     @Test
     fun `calculateEarnings - 초과 근무시 분급 기준으로 증가된 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
         // 540분 정책, 600분 실제 (1시간 초과)
-        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 600)
-        assertThat(result).isGreaterThan(dailyRate)
+        val result = salaryCalculator.calculateEarnings(dailyRate, 540, 600)
+        Assertions.assertThat(result).isGreaterThan(dailyRate)
     }
 
     @Test
     fun `calculateEarnings - 조기 퇴근시 분급 기준으로 감소된 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
         // 540분 정책, 480분 실제 (1시간 조기 퇴근)
-        val result = SalaryCalculator.calculateEarnings(dailyRate, 540, 480)
-        assertThat(result).isLessThan(dailyRate)
+        val result = salaryCalculator.calculateEarnings(dailyRate, 540, 480)
+        Assertions.assertThat(result).isLessThan(dailyRate)
     }
 
     @Test
     fun `같은 월급이라도 월마다 근무일수에 따라 일급이 달라진다`() {
         val salary = 3_000_000L
 
-        val febResult = SalaryCalculator.calculateDailyRate(
+        val febResult = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 2, 1),
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = salary,
             workDays = WEEKDAYS,
         )
 
-        val marResult = SalaryCalculator.calculateDailyRate(
+        val marResult = salaryCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 3, 1),
-            salaryType = SalaryType.MONTHLY,
+            salaryType = SalaryInputType.MONTHLY,
             salaryAmount = salary,
             workDays = WEEKDAYS,
         )
 
         // 2월(20일) > 3월(21일) → 2월 일급이 더 높아야 함
-        assertThat(febResult).isGreaterThan(marResult)
+        Assertions.assertThat(febResult).isGreaterThan(marResult)
     }
 }

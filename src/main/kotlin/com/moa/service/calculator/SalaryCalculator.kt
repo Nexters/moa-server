@@ -1,45 +1,24 @@
-package com.moa.entity
+package com.moa.service.calculator
 
+import com.moa.entity.SalaryInputType
+import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.*
 
 /**
- * 급여 산정 방식을 정의하는 열거형입니다.
+ * 급여, 일급, 근로 시간 등을 계산하는 서비스입니다.
+ * * 외부 상태를 가지지 않지만, 계산 책임을 애플리케이션 서비스로 통일하기 위해 Spring Bean으로 관리합니다.
  */
-enum class SalaryType {
-    /** 연봉 기반 산정 방식 */
-    YEARLY,
-
-    /** 월급 기반 산정 방식 */
-    MONTHLY;
-
-    companion object {
-        /**
-         * 입력된 급여 유형([SalaryInputType])을 내부 처리용 급여 산정 방식([SalaryType])으로 변환합니다.
-         *
-         * @param inputType 외부에서 입력된 급여 유형 (예: ANNUAL, MONTHLY)
-         * @return 매핑된 [SalaryType] 인스턴스
-         */
-        fun from(inputType: SalaryInputType): SalaryType = when (inputType) {
-            SalaryInputType.ANNUAL -> YEARLY
-            SalaryInputType.MONTHLY -> MONTHLY
-        }
-    }
-}
-
-/**
- * 급여, 일급, 근로 시간 등을 계산하는 순수 유틸리티 객체입니다.
- * * 외부 상태를 가지지 않으며, 제공된 파라미터만을 기반으로 계산을 수행합니다.
- */
-object SalaryCalculator {
+@Service
+class SalaryCalculator {
 
     /**
      * 특정 일자가 속한 달의 일일 급여(일급)를 계산합니다.
      *
      * 이 메서드는 직원의 월 기본급을 해당 월의 '총 소정 근로일수'로 나누어 일급을 산출합니다.
-     * 연봉([SalaryType.YEARLY])인 경우 금액을 12로 나누어 월 기본급을 먼저 구합니다.
-     * 최종 산출된 일급은 소수점 첫째 자리에서 반올림([RoundingMode.HALF_UP]) 처리됩니다.
+     * 연봉([com.moa.entity.SalaryInputType.ANNUAL])인 경우 금액을 12로 나누어 월 기본급을 먼저 구합니다.
+     * 최종 산출된 일급은 소수점 첫째 자리에서 반올림([java.math.RoundingMode.HALF_UP]) 처리됩니다.
      *
      * @param targetDate 기준 일자 (이 일자가 속한 월을 기준으로 총 근로일수를 계산합니다)
      * @param salaryType 급여 산정 방식 (연봉 또는 월급)
@@ -49,18 +28,18 @@ object SalaryCalculator {
      */
     fun calculateDailyRate(
         targetDate: LocalDate,
-        salaryType: SalaryType,
+        salaryType: SalaryInputType,
         salaryAmount: Long,
         workDays: Set<DayOfWeek>
     ): BigDecimal {
         val monthlySalary = when (salaryType) {
-            SalaryType.YEARLY -> salaryAmount.toBigDecimal().divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
-            SalaryType.MONTHLY -> salaryAmount.toBigDecimal()
+            SalaryInputType.ANNUAL -> salaryAmount.toBigDecimal().divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
+            SalaryInputType.MONTHLY -> salaryAmount.toBigDecimal()
         }
 
         val yearMonth = YearMonth.from(targetDate)
         val periodStart = yearMonth.atDay(1)
-        val periodEnd = yearMonth.atEndOfMonth().plusDays(1) // exclusive
+        val periodEnd = yearMonth.atEndOfMonth().plusDays(1)
 
         val workDaysCount = getWorkDaysInPeriod(periodStart, periodEnd, workDays)
 

@@ -1,8 +1,8 @@
 package com.moa.repository
 
-import com.moa.entity.NotificationLog
-import com.moa.entity.NotificationStatus
-import com.moa.entity.NotificationType
+import com.moa.entity.notification.NotificationLog
+import com.moa.entity.notification.NotificationStatus
+import com.moa.entity.notification.NotificationType
 import org.springframework.data.jpa.repository.JpaRepository
 import java.time.LocalDate
 import java.time.LocalTime

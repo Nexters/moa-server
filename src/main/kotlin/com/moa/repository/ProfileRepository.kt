@@ -5,5 +5,5 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface ProfileRepository : JpaRepository<Profile, Long> {
     fun findByMemberId(memberId: Long): Profile?
-    fun findAllByPaydayDayIn(paydayDays: Collection<Int>): List<Profile>
+    fun findAllByPaydayDay_ValueIn(paydayDayValues: Collection<Int>): List<Profile>
 }

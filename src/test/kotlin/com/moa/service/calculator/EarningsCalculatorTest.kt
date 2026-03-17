@@ -1,4 +1,4 @@
-package com.moa.service
+package com.moa.service.calculator
 
 import com.moa.entity.*
 import com.moa.repository.PayrollVersionRepository
@@ -16,7 +16,8 @@ import java.time.LocalTime
 class EarningsCalculatorTest {
 
     private val payrollVersionRepository: PayrollVersionRepository = mockk()
-    private val sut = EarningsCalculator(payrollVersionRepository)
+    private val salaryCalculator = SalaryCalculator()
+    private val sut = EarningsCalculator(payrollVersionRepository, salaryCalculator)
 
     companion object {
         private const val MEMBER_ID = 1L

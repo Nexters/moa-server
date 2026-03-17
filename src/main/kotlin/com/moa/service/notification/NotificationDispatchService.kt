@@ -1,7 +1,7 @@
 package com.moa.service.notification
 
-import com.moa.entity.NotificationLog
-import com.moa.entity.NotificationStatus
+import com.moa.entity.notification.NotificationLog
+import com.moa.entity.notification.NotificationStatus
 import com.moa.repository.FcmTokenRepository
 import com.moa.repository.NotificationLogRepository
 import com.moa.service.FcmService

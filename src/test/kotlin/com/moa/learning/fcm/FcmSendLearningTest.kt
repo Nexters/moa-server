@@ -1,4 +1,4 @@
-package com.moa.service.fcm
+package com.moa.learning.fcm
 
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.firebase.FirebaseApp
