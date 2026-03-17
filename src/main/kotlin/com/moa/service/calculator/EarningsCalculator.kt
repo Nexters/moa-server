@@ -1,4 +1,4 @@
-package com.moa.service
+package com.moa.service.calculator
 
 import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.SalaryInputType
@@ -24,8 +24,8 @@ class EarningsCalculator(
      * 지정된 날짜가 속한 월을 기준으로 직원의 기본 월급을 계산합니다.
      *
      * 주어진 날짜가 속한 달의 마지막 날을 기준으로, 해당 시점에 유효한 가장 최근의 급여 정보를 바탕으로 계산합니다.
-     * 급여 유형이 연봉([SalaryInputType.ANNUAL])인 경우 12로 나눈 후 소수점 첫째 자리에서 반올림(HALF_UP)한 값을 반환하며,
-     * 월급([SalaryInputType.MONTHLY])인 경우 계약된 금액을 그대로 반환합니다.
+     * 급여 유형이 연봉([com.moa.entity.SalaryInputType.ANNUAL])인 경우 12로 나눈 후 소수점 첫째 자리에서 반올림(HALF_UP)한 값을 반환하며,
+     * 월급([com.moa.entity.SalaryInputType.MONTHLY])인 경우 계약된 금액을 그대로 반환합니다.
      *
      * @param memberId 직원의 고유 식별자
      * @param date 기준 날짜 (이 날짜가 속한 월의 마지막 날을 기준으로 유효한 급여 정책을 적용합니다)
@@ -51,7 +51,7 @@ class EarningsCalculator(
      *
      * 이 메서드는 직원의 근무 정책과 실제 출퇴근 시간을 비교하여 일일 소득을 산출합니다.
      * 다음과 같은 규칙이 적용됩니다:
-     * - 근무 일정이 없는 경우([DailyWorkScheduleType.NONE]) 소득은 `0`으로 계산됩니다.
+     * - 근무 일정이 없는 경우([com.moa.entity.DailyWorkScheduleType.NONE]) 소득은 `0`으로 계산됩니다.
      * - 실제 출근 시간([clockInTime])과 퇴근 시간([clockOutTime])이 모두 제공된 경우, 정책상의 소정 근로 시간과
      * 실제 근로 시간을 비율로 산정하여 급여를 일할 계산합니다.
      * - 출퇴근 시간 중 하나라도 누락된 경우, 해당 일자의 기본 일급(Daily Rate)을 그대로 반환합니다.

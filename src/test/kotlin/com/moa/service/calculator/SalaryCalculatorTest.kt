@@ -1,4 +1,4 @@
-package com.moa.service
+package com.moa.service.calculator
 
 import com.moa.entity.SalaryInputType
 import org.assertj.core.api.Assertions
