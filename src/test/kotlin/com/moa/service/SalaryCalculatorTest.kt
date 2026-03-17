@@ -1,7 +1,7 @@
-package com.moa.entity
+package com.moa.service
 
-import com.moa.service.SalaryCalculator
-import org.assertj.core.api.Assertions.assertThat
+import com.moa.entity.SalaryType
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -35,7 +35,7 @@ class SalaryCalculatorTest {
         )
 
         val expected = BigDecimal(3_000_000).divide(BigDecimal(20), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 연봉 기반 일급 계산 ---
@@ -55,7 +55,7 @@ class SalaryCalculatorTest {
 
         val expected = BigDecimal(36_000_000).divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
             .divide(BigDecimal(20), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 월별 근무일수 차이 ---
@@ -73,7 +73,7 @@ class SalaryCalculatorTest {
         )
 
         val expected = BigDecimal(2_100_000).divide(BigDecimal(21), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     @Test
@@ -89,7 +89,7 @@ class SalaryCalculatorTest {
         )
 
         val expected = BigDecimal(2_300_000).divide(BigDecimal(23), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 2월 처리 ---
@@ -107,7 +107,7 @@ class SalaryCalculatorTest {
         )
 
         val expected = BigDecimal(2_000_000).divide(BigDecimal(20), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     @Test
@@ -123,7 +123,7 @@ class SalaryCalculatorTest {
         )
 
         val expected = BigDecimal(2_100_000).divide(BigDecimal(21), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 근무요일 설정 ---
@@ -142,7 +142,7 @@ class SalaryCalculatorTest {
         )
 
         val expected = BigDecimal(2_400_000).divide(BigDecimal(24), 0, RoundingMode.HALF_UP)
-        assertThat(result).isEqualByComparingTo(expected)
+        Assertions.assertThat(result).isEqualByComparingTo(expected)
     }
 
     // --- 엣지 케이스 ---
@@ -156,7 +156,7 @@ class SalaryCalculatorTest {
             workDays = emptySet(),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
+        Assertions.assertThat(result).isEqualByComparingTo(BigDecimal.ZERO)
     }
 
     // --- 근무 시간(분) 계산 ---
@@ -167,7 +167,7 @@ class SalaryCalculatorTest {
             LocalTime.of(9, 0),
             LocalTime.of(18, 0),
         )
-        assertThat(result).isEqualTo(540L)
+        Assertions.assertThat(result).isEqualTo(540L)
     }
 
     @Test
@@ -176,7 +176,7 @@ class SalaryCalculatorTest {
             LocalTime.of(22, 0),
             LocalTime.of(2, 0),
         )
-        assertThat(result).isEqualTo(240L)
+        Assertions.assertThat(result).isEqualTo(240L)
     }
 
     @Test
@@ -185,7 +185,7 @@ class SalaryCalculatorTest {
             LocalTime.of(9, 0),
             LocalTime.of(9, 0),
         )
-        assertThat(result).isEqualTo(0L)
+        Assertions.assertThat(result).isEqualTo(0L)
     }
 
     // --- 실제 수입 계산 ---
@@ -194,7 +194,7 @@ class SalaryCalculatorTest {
     fun `calculateEarnings - 실제 근무시간이 정책과 같으면 일급과 동일한 금액을 반환한다`() {
         val dailyRate = BigDecimal(150_000)
         val result = salaryCalculator.calculateEarnings(dailyRate, 540, 540)
-        assertThat(result).isEqualByComparingTo(dailyRate)
+        Assertions.assertThat(result).isEqualByComparingTo(dailyRate)
     }
 
     @Test
@@ -202,7 +202,7 @@ class SalaryCalculatorTest {
         val dailyRate = BigDecimal(150_000)
         // 540분 정책, 600분 실제 (1시간 초과)
         val result = salaryCalculator.calculateEarnings(dailyRate, 540, 600)
-        assertThat(result).isGreaterThan(dailyRate)
+        Assertions.assertThat(result).isGreaterThan(dailyRate)
     }
 
     @Test
@@ -210,7 +210,7 @@ class SalaryCalculatorTest {
         val dailyRate = BigDecimal(150_000)
         // 540분 정책, 480분 실제 (1시간 조기 퇴근)
         val result = salaryCalculator.calculateEarnings(dailyRate, 540, 480)
-        assertThat(result).isLessThan(dailyRate)
+        Assertions.assertThat(result).isLessThan(dailyRate)
     }
 
     @Test
@@ -232,6 +232,6 @@ class SalaryCalculatorTest {
         )
 
         // 2월(20일) > 3월(21일) → 2월 일급이 더 높아야 함
-        assertThat(febResult).isGreaterThan(marResult)
+        Assertions.assertThat(febResult).isGreaterThan(marResult)
     }
 }

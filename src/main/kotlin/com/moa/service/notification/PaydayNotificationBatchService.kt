@@ -2,7 +2,6 @@ package com.moa.service.notification
 
 import com.moa.entity.*
 import com.moa.repository.*
-import com.moa.service.resolveEffectivePayday
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -49,8 +48,7 @@ class PaydayNotificationBatchService(
     }
 
     private fun findPaydayProfiles(date: LocalDate): List<Profile> {
-        val candidatePaydayDays = (1..31)
-            .filter { resolveEffectivePayday(date.year, date.monthValue, it) == date }
+        val candidatePaydayDays = PaydayDay.resolvingTo(date)
 
         if (candidatePaydayDays.isEmpty()) {
             return emptyList()

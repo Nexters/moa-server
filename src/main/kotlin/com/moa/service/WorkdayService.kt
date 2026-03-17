@@ -297,9 +297,9 @@ class WorkdayService(
         date: LocalDate,
         schedule: ResolvedSchedule,
         policy: WorkPolicyVersion?,
-        paydayDay: Int,
+        paydayDay: PaydayDay,
     ): WorkdayResponse {
-        val events = resolveDailyEvents(date, paydayDay)
+        val events = DailyEventType.resolve(date, paydayDay)
 
         if (schedule.type == DailyWorkScheduleType.NONE) {
             return WorkdayResponse(
@@ -359,24 +359,8 @@ class WorkdayService(
             )
     }
 
-    private fun resolvePaydayDay(memberId: Long): Int =
+    private fun resolvePaydayDay(memberId: Long): PaydayDay =
         profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()
-
-    private fun resolveDailyEvents(date: LocalDate, paydayDay: Int): List<DailyEventType> {
-        val events = mutableListOf<DailyEventType>()
-
-        if (isPayday(date, paydayDay)) {
-            events += DailyEventType.PAYDAY
-        }
-
-        // TODO: Add holiday event resolution when holiday data is available.
-
-        return events
-    }
-
-    private fun isPayday(date: LocalDate, paydayDay: Int): Boolean {
-        return resolveEffectivePayday(date.year, date.monthValue, paydayDay) == date
-    }
 
     private fun resolveClockOutForEarnings(
         targetDate: LocalDate,

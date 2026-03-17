@@ -3,6 +3,7 @@ package com.moa.service
 import com.moa.common.exception.BadRequestException
 import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
+import com.moa.entity.PaydayDay
 import com.moa.entity.Profile
 import com.moa.repository.ProfileRepository
 import com.moa.service.dto.NicknameUpdateRequest
@@ -25,7 +26,7 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
-            paydayDay = profile.paydayDay,
+            paydayDay = profile.paydayDay.value,
         )
     }
 
@@ -45,7 +46,7 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
-            paydayDay = profile.paydayDay,
+            paydayDay = profile.paydayDay.value,
         )
     }
 
@@ -59,7 +60,7 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
-            paydayDay = profile.paydayDay,
+            paydayDay = profile.paydayDay.value,
         )
     }
 
@@ -73,25 +74,25 @@ class ProfileService(
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
-            paydayDay = profile.paydayDay,
+            paydayDay = profile.paydayDay.value,
         )
     }
 
     @Transactional
     fun updatePayday(memberId: Long, req: PaydayUpdateRequest): ProfileResponse {
-        if (req.paydayDay !in 1..31) {
-            throw BadRequestException(ErrorCode.INVALID_PAYDAY_INPUT)
-        }
-
         val profile = profileRepository.findByMemberId(memberId)
             ?: throw NotFoundException()
 
-        profile.paydayDay = req.paydayDay
+        profile.paydayDay = try {
+            PaydayDay(req.paydayDay)
+        } catch (_: IllegalArgumentException) {
+            throw BadRequestException(ErrorCode.INVALID_PAYDAY_INPUT)
+        }
 
         return ProfileResponse(
             nickname = profile.nickname,
             workplace = profile.workplace,
-            paydayDay = profile.paydayDay,
+            paydayDay = profile.paydayDay.value,
         )
     }
 }

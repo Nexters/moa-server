@@ -27,7 +27,7 @@ class OnboardingStatusService(
                 ProfileResponse(
                     nickname = it.nickname,
                     workplace = it.workplace,
-                    paydayDay = it.paydayDay,
+                    paydayDay = it.paydayDay.value,
                 )
             }
 
