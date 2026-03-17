@@ -99,7 +99,12 @@ class WorkdayService(
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
             val schedule = resolveScheduleForDate(savedSchedulesByDate[date], monthlyPolicy, date)
-            val status = resolveDailyWorkStatus(date, schedule)
+            val status = DailyWorkStatusType.resolve(
+                date = date,
+                scheduleType = schedule.type,
+                clockIn = schedule.clockIn,
+                clockOut = schedule.clockOut,
+            )
             val adjustedClockOut = resolveClockOutForEarnings(date, today, now, schedule)
             val isCompletedWork = status == DailyWorkStatusType.COMPLETED &&
                     (schedule.type == DailyWorkScheduleType.WORK || schedule.type == DailyWorkScheduleType.VACATION)
@@ -308,7 +313,12 @@ class WorkdayService(
         val resolvedPolicy = policy ?: return WorkdayResponse(
             date = date,
             type = schedule.type,
-            status = resolveDailyWorkStatus(date, schedule),
+            status = DailyWorkStatusType.resolve(
+                date = date,
+                scheduleType = schedule.type,
+                clockIn = schedule.clockIn,
+                clockOut = schedule.clockOut,
+            ),
             events = events,
             dailyPay = 0,
             clockInTime = schedule.clockIn,
@@ -320,7 +330,12 @@ class WorkdayService(
         return WorkdayResponse(
             date = date,
             type = schedule.type,
-            status = resolveDailyWorkStatus(date, schedule),
+            status = DailyWorkStatusType.resolve(
+                date = date,
+                scheduleType = schedule.type,
+                clockIn = schedule.clockIn,
+                clockOut = schedule.clockOut,
+            ),
             events = events,
             dailyPay = earnings?.toInt() ?: 0,
             clockInTime = schedule.clockIn,
@@ -361,24 +376,6 @@ class WorkdayService(
 
     private fun isPayday(date: LocalDate, paydayDay: Int): Boolean {
         return resolveEffectivePayday(date.year, date.monthValue, paydayDay) == date
-    }
-
-    private fun resolveDailyWorkStatus(
-        date: LocalDate,
-        schedule: ResolvedSchedule,
-    ): DailyWorkStatusType {
-        if (schedule.type == DailyWorkScheduleType.NONE) return DailyWorkStatusType.NONE
-
-        val clockIn = schedule.clockIn ?: return DailyWorkStatusType.NONE
-        val clockOut = schedule.clockOut ?: return DailyWorkStatusType.NONE
-        val now = LocalDateTime.now()
-        val endAt = if (!clockOut.isBefore(clockIn)) {
-            date.atTime(clockOut)
-        } else {
-            date.plusDays(1).atTime(clockOut)
-        }
-
-        return if (now.isBefore(endAt)) DailyWorkStatusType.SCHEDULED else DailyWorkStatusType.COMPLETED
     }
 
     private fun resolveClockOutForEarnings(
