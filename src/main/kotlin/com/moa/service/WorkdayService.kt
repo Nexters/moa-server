@@ -5,12 +5,15 @@ import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.NotFoundException
 import com.moa.entity.*
 import com.moa.repository.DailyWorkScheduleRepository
+import com.moa.repository.PayrollVersionRepository
 import com.moa.repository.ProfileRepository
 import com.moa.repository.WorkPolicyVersionRepository
+import com.moa.service.calculator.CompensationCalculator
 import com.moa.service.dto.*
 import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -18,10 +21,11 @@ import java.time.YearMonth
 @Service
 class WorkdayService(
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
+    private val payrollVersionRepository: PayrollVersionRepository,
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
     private val profileRepository: ProfileRepository,
     private val notificationSyncService: NotificationSyncService,
-    private val memberEarningsService: MemberEarningsService,
+    private val compensationCalculator: CompensationCalculator,
 ) {
 
     @Transactional(readOnly = true)
@@ -49,7 +53,7 @@ class WorkdayService(
     fun getMonthlyEarnings(memberId: Long, year: Int, month: Int): MonthlyEarningsResponse {
         val (start, end) = resolveMonthRange(year, month)
         val today = LocalDate.now()
-        val standardSalary = memberEarningsService.calculateStandardSalary(memberId, start).toLong()
+        val standardSalary = calculateStandardSalary(memberId, start).toLong()
 
         val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
         if (monthlyPolicy == null) {
@@ -61,7 +65,7 @@ class WorkdayService(
             )
         }
 
-        val standardMinutes = memberEarningsService.calculateStandardMinutes(monthlyPolicy, start, end)
+        val standardMinutes = compensationCalculator.calculateStandardMinutes(monthlyPolicy, start, end)
 
         if (start.isAfter(today)) {
             return MonthlyEarningsResponse(0, standardSalary, 0, standardMinutes)
@@ -87,19 +91,18 @@ class WorkdayService(
             val completedWork = resolveCompletedWorkForSettlement(schedule, status)
 
             if (completedWork != null) {
-                workedMinutes += memberEarningsService.calculateWorkedMinutes(
+                workedMinutes += compensationCalculator.calculateWorkMinutes(
                     completedWork.clockIn,
                     completedWork.clockOut,
                 )
-                val dailyEarnings = memberEarningsService.calculateDailyEarnings(
+                workedEarnings += calculateDailyEarnings(
                     memberId,
                     date,
                     monthlyPolicy,
                     completedWork.type,
                     completedWork.clockIn,
                     completedWork.clockOut,
-                )
-                workedEarnings += dailyEarnings.toLong()
+                ).toLong()
             }
 
             date = date.plusDays(1)
@@ -234,9 +237,6 @@ class WorkdayService(
 
     /**
      * 저장된 스케줄과 정책 기본값 중 어떤 값을 응답에 반영할지 한 곳에서 결정하기 위한 헬퍼입니다.
-     *
-     * 월간 조회, 단건 조회, 월간 집계가 모두 같은 해석 규칙을 쓰도록 하여
-     * "저장된 값이 있으면 우선, 없으면 정책으로 보완" 규칙의 중복을 줄입니다.
      */
     private fun resolveScheduleForDate(
         saved: DailyWorkSchedule?,
@@ -256,9 +256,6 @@ class WorkdayService(
 
     /**
      * 근무일 화면 응답 생성 규칙을 한 곳에 모아 두기 위한 헬퍼입니다.
-     *
-     * 상태 계산, 이벤트 계산, 표시용 일급 계산이 여러 API에서 동일하게 동작해야 하므로
-     * 응답 조립 로직을 서비스 메서드마다 반복하지 않도록 분리했습니다.
      */
     private fun createWorkdayResponse(
         memberId: Long,
@@ -299,9 +296,6 @@ class WorkdayService(
 
     /**
      * 정책이 없는 경우를 포함해 스케줄 해석 진입점을 단순화하기 위한 헬퍼입니다.
-     *
-     * 호출부가 매번 null 정책 분기를 직접 처리하지 않게 해서
-     * 월간 조회와 단건 조회의 흐름을 더 짧고 동일한 형태로 유지합니다.
      */
     private fun resolveSchedule(
         saved: DailyWorkSchedule?,
@@ -316,9 +310,6 @@ class WorkdayService(
 
     /**
      * 월 시작일과 마지막 날 계산을 한 곳으로 모아 날짜 범위 표현을 통일하기 위한 헬퍼입니다.
-     *
-     * 같은 계산이 여러 메서드에 흩어지면 사소한 수정에도 중복 변경이 필요하므로
-     * 월 단위 조회에서 공통으로 사용하는 범위 생성을 분리했습니다.
      */
     private fun resolveMonthRange(year: Int, month: Int): Pair<LocalDate, LocalDate> {
         val start = LocalDate.of(year, month, 1)
@@ -327,9 +318,6 @@ class WorkdayService(
 
     /**
      * 화면에 보여줄 `dailyPay` 계산 책임을 월 정산 로직과 분리하기 위한 헬퍼입니다.
-     *
-     * 같은 계산기를 사용하더라도 화면 표시는 "그날 보여줄 금액"이고,
-     * 월 집계는 "완료된 근무만 합산한 확정 소득"이므로 의도를 코드 레벨에서 구분합니다.
      */
     private fun resolveDisplayedDailyPay(
         memberId: Long,
@@ -339,16 +327,47 @@ class WorkdayService(
     ): Int {
         if (policy == null) return 0
 
-        return memberEarningsService.calculateDailyEarnings(
+        return calculateDailyEarnings(
             memberId, date, policy, schedule.type, schedule.clockIn, schedule.clockOut,
         ).toInt()
     }
 
     /**
-     * 월 소득 집계에 포함 가능한 근무만 선별하기 위한 헬퍼입니다.
+     * 해당 월에 적용할 급여 정보를 조회한 뒤 기준 월급을 계산합니다.
      *
-     * 완료 여부, 근무 유형, 출퇴근 시간 존재 여부를 한 번에 확인해
-     * 정산 대상 판정 규칙이 루프 본문에 흩어지지 않도록 분리했습니다.
+     * 급여 정보가 없으면 `0`을 반환합니다.
+     */
+    private fun calculateStandardSalary(memberId: Long, date: LocalDate) =
+        resolveMonthlyRepresentativePayrollOrNull(memberId, date.year, date.monthValue)?.let {
+            compensationCalculator.calculateStandardSalary(it.salaryInputType, it.salaryAmount)
+        } ?: BigDecimal.ZERO
+
+    /**
+     * 해당 월에 적용할 급여 정보를 조회한 뒤 일일 소득 계산에 필요한 값만 계산기로 전달합니다.
+     *
+     * 급여 정보가 없으면 `0`을 반환합니다.
+     */
+    private fun calculateDailyEarnings(
+        memberId: Long,
+        date: LocalDate,
+        policy: WorkPolicyVersion,
+        type: DailyWorkScheduleType,
+        clockInTime: LocalTime?,
+        clockOutTime: LocalTime?,
+    ) = resolveMonthlyRepresentativePayrollOrNull(memberId, date.year, date.monthValue)?.let {
+        compensationCalculator.calculateDailyEarnings(
+            date = date,
+            salaryType = it.salaryInputType,
+            salaryAmount = it.salaryAmount,
+            policy = policy,
+            type = type,
+            clockInTime = clockInTime,
+            clockOutTime = clockOutTime,
+        )
+    } ?: BigDecimal.ZERO
+
+    /**
+     * 월 소득 집계에 포함 가능한 근무만 선별하기 위한 헬퍼입니다.
      */
     private fun resolveCompletedWorkForSettlement(
         schedule: ResolvedSchedule,
@@ -366,9 +385,6 @@ class WorkdayService(
 
     /**
      * 휴무 입력 시 사용할 시간을 결정하는 규칙을 `upsertSchedule`에서 분리하기 위한 헬퍼입니다.
-     *
-     * 요청 시간이 모두 있으면 그대로 사용하고, 없으면 정책 시간으로 보완하는 규칙을 묶어
-     * 상위 메서드가 "어떤 타입의 스케줄을 저장하는가"에만 집중하게 합니다.
      */
     private fun resolveVacationTimes(
         memberId: Long,
@@ -411,6 +427,22 @@ class WorkdayService(
                 lastDayOfMonth,
             )
     }
+
+    /**
+     * 특정 월을 대표하는 급여 버전을 조회하는 규칙을 명시적으로 드러내기 위한 헬퍼입니다.
+     *
+     * 이 서비스는 월말 기준으로 그 달에 적용되는 최신 급여를 사용하므로,
+     * 조회 기준일 계산과 리포지토리 호출을 한 곳에 묶어 의미를 고정합니다.
+     */
+    private fun resolveMonthlyRepresentativePayrollOrNull(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ) = payrollVersionRepository
+        .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+            memberId,
+            YearMonth.of(year, month).atEndOfMonth(),
+        )
 
     private fun resolvePaydayDay(memberId: Long): PaydayDay =
         profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()

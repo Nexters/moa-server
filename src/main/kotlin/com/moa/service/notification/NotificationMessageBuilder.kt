@@ -1,11 +1,13 @@
 package com.moa.service.notification
 
+import com.moa.common.exception.NotFoundException
 import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationType
 import com.moa.repository.DailyWorkScheduleRepository
+import com.moa.repository.PayrollVersionRepository
 import com.moa.repository.WorkPolicyVersionRepository
-import com.moa.service.MemberEarningsService
+import com.moa.service.calculator.CompensationCalculator
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.text.NumberFormat
@@ -16,8 +18,9 @@ import java.util.*
 @Service
 class NotificationMessageBuilder(
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
+    private val payrollVersionRepository: PayrollVersionRepository,
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
-    private val memberEarningsService: MemberEarningsService,
+    private val compensationCalculator: CompensationCalculator,
 ) {
 
     fun buildMessage(notification: NotificationLog): NotificationMessage {
@@ -39,23 +42,39 @@ class NotificationMessageBuilder(
         return notification.notificationType.getBody(formatted)
     }
 
-    private fun calculateTodayEarnings(memberId: Long, date: LocalDate): BigDecimal? {
-        val lastDayOfMonth = YearMonth.from(date).atEndOfMonth()
-        val policy = workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId, lastDayOfMonth,
-            ) ?: return null
+    private fun calculateTodayEarnings(memberId: Long, date: LocalDate): BigDecimal {
+        val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue) ?: throw NotFoundException()
+        val payroll = resolveMonthlyRepresentativePayrollOrNull(memberId, date.year, date.monthValue) ?: throw NotFoundException()
 
         val override = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
-        return memberEarningsService.calculateDailyEarnings(
-            memberId = memberId,
+        return compensationCalculator.calculateDailyEarnings(
             date = date,
+            salaryType = payroll.salaryInputType,
+            salaryAmount = payroll.salaryAmount,
             policy = policy,
             type = override?.type ?: DailyWorkScheduleType.WORK,
             clockInTime = override?.clockInTime,
             clockOutTime = override?.clockOutTime,
         )
     }
+
+    private fun resolveMonthlyRepresentativePolicyOrNull(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ) = workPolicyVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+        memberId,
+        YearMonth.of(year, month).atEndOfMonth(),
+    )
+
+    private fun resolveMonthlyRepresentativePayrollOrNull(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ) = payrollVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+        memberId,
+        YearMonth.of(year, month).atEndOfMonth(),
+    )
 
     companion object {
         private const val CLOCK_OUT_FALLBACK_BODY = "오늘도 수고하셨어요!"
