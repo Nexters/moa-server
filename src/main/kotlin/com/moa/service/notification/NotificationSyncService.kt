@@ -18,6 +18,7 @@ class NotificationSyncService(
     private val notificationLogRepository: NotificationLogRepository,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val workNotificationTypes = listOf(NotificationType.CLOCK_IN, NotificationType.CLOCK_OUT)
 
     @Transactional
     fun syncNotifications(
@@ -27,20 +28,18 @@ class NotificationSyncService(
         clockInTime: LocalTime?,
         clockOutTime: LocalTime?,
     ) {
-        val pendingLogs = notificationLogRepository
-            .findAllByMemberIdAndScheduledDateAndStatus(memberId, date, NotificationStatus.PENDING)
-            .filter { it.notificationType != NotificationType.PAYDAY }
+        val pendingLogs = findPendingWorkNotifications(memberId, date)
 
         if (pendingLogs.isEmpty()) {
-            restoreIfCancelled(memberId, date, type, clockInTime, clockOutTime)
+            ensureUpcomingWorkNotifications(memberId, date, type, clockInTime, clockOutTime)
             return
         }
 
-        if (type == DailyWorkScheduleType.VACATION) {
+        if (type == DailyWorkScheduleType.VACATION || type == DailyWorkScheduleType.NONE) {
             pendingLogs.forEach { it.status = NotificationStatus.CANCELLED }
             log.info(
-                "Cancelled {} pending notifications for member {} on {} (vacation)",
-                pendingLogs.size, memberId, date,
+                "Cancelled {} pending notifications for member {} on {} ({})",
+                pendingLogs.size, memberId, date, type,
             )
             return
         }
@@ -49,6 +48,7 @@ class NotificationSyncService(
             when (pendingLog.notificationType) {
                 NotificationType.CLOCK_IN -> {
                     clockInTime?.let { pendingLog.scheduledTime = truncateToMinute(it) }
+                    pendingLog.scheduledDate = date
                 }
 
                 NotificationType.CLOCK_OUT -> {
@@ -70,7 +70,21 @@ class NotificationSyncService(
         log.info("Synced pending notifications for member {} on {}", memberId, date)
     }
 
-    private fun restoreIfCancelled(
+    private fun findPendingWorkNotifications(memberId: Long, date: LocalDate): List<NotificationLog> {
+        val sameDayLogs = notificationLogRepository
+            .findAllByMemberIdAndScheduledDateInAndStatus(memberId, listOf(date), NotificationStatus.PENDING)
+            .filter { it.notificationType != NotificationType.PAYDAY }
+        val nextDayClockOutLogs = notificationLogRepository
+            .findAllByMemberIdAndScheduledDateAndNotificationTypeAndStatus(
+                memberId,
+                date.plusDays(1),
+                NotificationType.CLOCK_OUT,
+                NotificationStatus.PENDING,
+            )
+        return sameDayLogs + nextDayClockOutLogs
+    }
+
+    private fun ensureUpcomingWorkNotifications(
         memberId: Long,
         date: LocalDate,
         type: DailyWorkScheduleType,
@@ -80,29 +94,42 @@ class NotificationSyncService(
         if (type != DailyWorkScheduleType.WORK) return
         if (clockInTime == null || clockOutTime == null) return
 
-        val hasCancelled = notificationLogRepository
-            .existsByMemberIdAndScheduledDateAndStatus(memberId, date, NotificationStatus.CANCELLED)
-        if (!hasCancelled) return
-
         val now = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
         val logs = mutableListOf<NotificationLog>()
         val truncatedIn = truncateToMinute(clockInTime)
         val truncatedOut = truncateToMinute(clockOutTime)
         val isMidnightCrossing = truncatedOut < truncatedIn
+        val relatedDates = listOf(date, date.plusDays(1))
+        val existingLogs = notificationLogRepository
+            .findAllByMemberIdAndScheduledDateInAndNotificationTypeIn(
+                memberId,
+                relatedDates,
+                workNotificationTypes,
+            )
 
-        if (date.atTime(truncatedIn).isAfter(now)) {
+        if (date.atTime(truncatedIn).isAfter(now) && existingLogs.none {
+                it.notificationType == NotificationType.CLOCK_IN &&
+                    it.scheduledDate == date &&
+                    it.status != NotificationStatus.CANCELLED
+            }
+        ) {
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, truncatedIn))
         }
 
         val clockOutDate = if (isMidnightCrossing) date.plusDays(1) else date
-        if (clockOutDate.atTime(truncatedOut).isAfter(now)) {
+        if (clockOutDate.atTime(truncatedOut).isAfter(now) && existingLogs.none {
+                it.notificationType == NotificationType.CLOCK_OUT &&
+                    it.scheduledDate == clockOutDate &&
+                    it.status != NotificationStatus.CANCELLED
+            }
+        ) {
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, truncatedOut))
         }
 
         if (logs.isNotEmpty()) {
             notificationLogRepository.saveAll(logs)
             log.info(
-                "Restored {} notifications for member {} on {} (vacation -> work)",
+                "Ensured {} upcoming work notifications for member {} on {}",
                 logs.size, memberId, date,
             )
         }

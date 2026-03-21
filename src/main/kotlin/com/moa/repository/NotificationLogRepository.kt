@@ -14,10 +14,23 @@ interface NotificationLogRepository : JpaRepository<NotificationLog, Long> {
         status: NotificationStatus,
     ): List<NotificationLog>
 
-    fun findAllByMemberIdAndScheduledDateAndStatus(
+    fun findAllByMemberIdAndScheduledDateInAndStatus(
+        memberId: Long,
+        scheduledDates: Collection<LocalDate>,
+        status: NotificationStatus,
+    ): List<NotificationLog>
+
+    fun findAllByMemberIdAndScheduledDateAndNotificationTypeAndStatus(
         memberId: Long,
         scheduledDate: LocalDate,
+        notificationType: NotificationType,
         status: NotificationStatus,
+    ): List<NotificationLog>
+
+    fun findAllByMemberIdAndScheduledDateInAndNotificationTypeIn(
+        memberId: Long,
+        scheduledDates: Collection<LocalDate>,
+        notificationTypes: Collection<NotificationType>,
     ): List<NotificationLog>
 
     fun existsByMemberIdAndScheduledDateAndStatus(
