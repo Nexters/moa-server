@@ -200,7 +200,7 @@ class WorkdayService(
     fun patchClockOut(memberId: Long, date: LocalDate, req: WorkdayEditRequest): WorkdayResponse {
         val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
             ?.also {
-                if (it.type == DailyWorkScheduleType.VACATION) {
+                if (it.type == DailyWorkScheduleType.VACATION || it.type == DailyWorkScheduleType.NONE) {
                     throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
                 }
             }

@@ -91,7 +91,7 @@ class NotificationBatchService(
 
         if (!context.hasAgreedToAll(memberId, requiredCodes)) return null
         if (!context.isNotificationEnabled(memberId)) return null
-        if (context.isOnVacation(memberId)) return null
+        if (context.isWorkSuppressed(memberId)) return null
         if (!context.hasFcmToken(memberId)) return null
 
         val override = context.getOverride(memberId)
@@ -122,8 +122,9 @@ class NotificationBatchService(
         fun isNotificationEnabled(memberId: Long): Boolean =
             settingsMap[memberId]?.workNotificationEnabled != false
 
-        fun isOnVacation(memberId: Long): Boolean =
-            overridesMap[memberId]?.type == DailyWorkScheduleType.VACATION
+        fun isWorkSuppressed(memberId: Long): Boolean =
+            overridesMap[memberId]?.type == DailyWorkScheduleType.VACATION ||
+                overridesMap[memberId]?.type == DailyWorkScheduleType.NONE
 
         fun hasFcmToken(memberId: Long): Boolean =
             !tokensMap[memberId].isNullOrEmpty()
