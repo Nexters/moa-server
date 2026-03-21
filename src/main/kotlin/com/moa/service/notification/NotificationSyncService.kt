@@ -36,11 +36,11 @@ class NotificationSyncService(
             return
         }
 
-        if (type == DailyWorkScheduleType.VACATION) {
+        if (type == DailyWorkScheduleType.VACATION || type == DailyWorkScheduleType.NONE) {
             pendingLogs.forEach { it.status = NotificationStatus.CANCELLED }
             log.info(
-                "Cancelled {} pending notifications for member {} on {} (vacation)",
-                pendingLogs.size, memberId, date,
+                "Cancelled {} pending notifications for member {} on {} ({})",
+                pendingLogs.size, memberId, date, type,
             )
             return
         }
