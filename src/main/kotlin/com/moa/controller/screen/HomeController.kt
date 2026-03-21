@@ -33,6 +33,7 @@ class HomeController(
                 dailyPay = schedule.dailyPay,
                 type = schedule.type,
                 status = schedule.status,
+                events = schedule.events,
                 clockInTime = schedule.clockInTime,
                 clockOutTime = schedule.clockOutTime,
             )
