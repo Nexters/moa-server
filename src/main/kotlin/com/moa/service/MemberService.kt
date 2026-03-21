@@ -9,6 +9,7 @@ import com.moa.service.dto.MemberResponse
 import com.moa.service.dto.WithdrawalRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 
 @Service
 class MemberService(
@@ -27,6 +28,13 @@ class MemberService(
             provider = member.provider,
         )
     }
+
+    @Transactional(readOnly = true)
+    fun getJoinedAt(memberId: Long): LocalDate =
+        memberRepository.findById(memberId)
+            .orElseThrow { NotFoundException() }
+            .createdAt
+            .toLocalDate()
 
     @Transactional
     fun deleteMember(memberId: Long, req: WithdrawalRequest) {

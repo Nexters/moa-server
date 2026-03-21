@@ -3,6 +3,7 @@ package com.moa.controller.screen
 import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
 import com.moa.common.response.ApiResponse
+import com.moa.service.MemberService
 import com.moa.service.WorkdayService
 import com.moa.service.dto.CalendarResponse
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController
 @RestController
 @RequestMapping("/api/v1/calendar")
 class CalendarController(
+    private val memberService: MemberService,
     private val workdayService: WorkdayService,
 ) {
 
@@ -27,6 +29,7 @@ class CalendarController(
         CalendarResponse(
             earnings = workdayService.getMonthlyEarnings(member.id, year, month),
             schedules = workdayService.getMonthlyWorkdays(member.id, year, month),
+            joinedAt = memberService.getJoinedAt(member.id),
         )
     )
 }
