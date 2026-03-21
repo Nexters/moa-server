@@ -28,10 +28,7 @@ class NotificationSyncService(
         clockInTime: LocalTime?,
         clockOutTime: LocalTime?,
     ) {
-        val relatedDates = listOf(date, date.plusDays(1))
-        val pendingLogs = notificationLogRepository
-            .findAllByMemberIdAndScheduledDateInAndStatus(memberId, relatedDates, NotificationStatus.PENDING)
-            .filter { it.notificationType != NotificationType.PAYDAY }
+        val pendingLogs = findPendingWorkNotifications(memberId, date)
 
         if (pendingLogs.isEmpty()) {
             ensureUpcomingWorkNotifications(memberId, date, type, clockInTime, clockOutTime)
@@ -71,6 +68,20 @@ class NotificationSyncService(
             }
         }
         log.info("Synced pending notifications for member {} on {}", memberId, date)
+    }
+
+    private fun findPendingWorkNotifications(memberId: Long, date: LocalDate): List<NotificationLog> {
+        val sameDayLogs = notificationLogRepository
+            .findAllByMemberIdAndScheduledDateInAndStatus(memberId, listOf(date), NotificationStatus.PENDING)
+            .filter { it.notificationType != NotificationType.PAYDAY }
+        val nextDayClockOutLogs = notificationLogRepository
+            .findAllByMemberIdAndScheduledDateAndNotificationTypeAndStatus(
+                memberId,
+                date.plusDays(1),
+                NotificationType.CLOCK_OUT,
+                NotificationStatus.PENDING,
+            )
+        return sameDayLogs + nextDayClockOutLogs
     }
 
     private fun ensureUpcomingWorkNotifications(
