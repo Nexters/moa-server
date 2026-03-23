@@ -35,8 +35,17 @@ class SwaggerConfig {
             .bearerFormat(jwt)
             .`in`(SecurityScheme.In.HEADER)
 
+        val adminKeyScheme = SecurityScheme()
+            .name("X-Admin-Key")
+            .type(SecurityScheme.Type.APIKEY)
+            .`in`(SecurityScheme.In.HEADER)
+
         return OpenAPI()
-            .components(Components().addSecuritySchemes(securitySchemeName, securityScheme))
+            .components(
+                Components()
+                    .addSecuritySchemes(securitySchemeName, securityScheme)
+                    .addSecuritySchemes("AdminKey", adminKeyScheme)
+            )
             .addSecurityItem(securityRequirement)
             .servers(
                 listOf(

@@ -4,6 +4,7 @@ import com.moa.common.exception.NotFoundException
 import com.moa.entity.OsType
 import com.moa.repository.AppVersionRepository
 import com.moa.service.dto.AppVersionResponse
+import com.moa.service.dto.AppVersionUpdateRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,6 +17,18 @@ class AppVersionService(
     fun getVersion(osType: OsType): AppVersionResponse {
         val version = appVersionRepository.findByOsType(osType)
             ?: throw NotFoundException()
+        return AppVersionResponse(
+            latestVersion = version.latestVersion,
+            minimumVersion = version.minimumVersion,
+        )
+    }
+
+    @Transactional
+    fun updateVersion(request: AppVersionUpdateRequest): AppVersionResponse {
+        val version = appVersionRepository.findByOsType(request.osType)
+            ?: throw NotFoundException()
+        version.latestVersion = request.latestVersion
+        version.minimumVersion = request.minimumVersion
         return AppVersionResponse(
             latestVersion = version.latestVersion,
             minimumVersion = version.minimumVersion,
