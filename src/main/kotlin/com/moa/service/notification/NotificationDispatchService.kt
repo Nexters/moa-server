@@ -5,6 +5,7 @@ import com.moa.entity.notification.NotificationStatus
 import com.moa.repository.FcmTokenRepository
 import com.moa.repository.NotificationLogRepository
 import com.moa.service.FcmService
+import com.moa.service.dto.FcmRequest
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.LocalDate
@@ -34,12 +35,6 @@ class NotificationDispatchService(
         val tokensByMemberId = fcmTokenRepository.findAllByMemberIdIn(memberIds)
             .groupBy { it.memberId }
 
-        data class DispatchItem(
-            val notification: NotificationLog,
-            val token: String,
-            val data: Map<String, String>,
-        )
-
         val dispatchItems = mutableListOf<DispatchItem>()
         for (notification in pendingLogs) {
             val tokens = tokensByMemberId[notification.memberId].orEmpty()
@@ -53,7 +48,7 @@ class NotificationDispatchService(
         }
 
         if (dispatchItems.isNotEmpty()) {
-            val results = fcmService.sendEach(dispatchItems.map { it.token to it.data })
+            val results = fcmService.sendEach(dispatchItems.map { FcmRequest(it.token, it.data) })
             results.forEachIndexed { i, success ->
                 if (success) dispatchItems[i].notification.status = NotificationStatus.SENT
             }
@@ -64,3 +59,9 @@ class NotificationDispatchService(
         notificationLogRepository.saveAll(pendingLogs)
     }
 }
+
+private data class DispatchItem(
+    val notification: NotificationLog,
+    val token: String,
+    val data: Map<String, String>,
+)

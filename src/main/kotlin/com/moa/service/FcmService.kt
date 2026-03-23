@@ -2,6 +2,7 @@ package com.moa.service
 
 import com.google.firebase.messaging.*
 import com.moa.repository.FcmTokenRepository
+import com.moa.service.dto.FcmRequest
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
@@ -11,16 +12,16 @@ class FcmService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun sendEach(requests: List<Pair<String, Map<String, String>>>): List<Boolean> {
+    fun sendEach(requests: List<FcmRequest>): List<Boolean> {
         if (requests.isEmpty()) return emptyList()
         val results = ArrayList<Boolean>(requests.size)
         requests.chunked(MAX_BATCH_SIZE).forEach { batch ->
             try {
-                val messages = batch.map { (token, data) -> buildMessage(token, data) }
+                val messages = batch.map { buildMessage(it.token, it.data) }
                 val response = FirebaseMessaging.getInstance().sendEach(messages)
                 response.responses.forEachIndexed { i, sendResponse ->
                     if (!sendResponse.isSuccessful) {
-                        handleFcmException(sendResponse.exception, batch[i].first)
+                        handleFcmException(sendResponse.exception, batch[i].token)
                     }
                     results.add(sendResponse.isSuccessful)
                 }
