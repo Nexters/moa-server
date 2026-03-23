@@ -43,8 +43,13 @@ class NotificationDispatchService(
                 log.warn("No FCM tokens for member {}, marking as FAILED", notification.memberId)
                 continue
             }
-            val data = notificationMessageBuilder.buildMessage(notification).toData()
-            tokens.forEach { dispatchItems.add(DispatchItem(notification, it.token, data)) }
+            try {
+                val data = notificationMessageBuilder.buildMessage(notification).toData()
+                tokens.forEach { dispatchItems.add(DispatchItem(notification, it.token, data)) }
+            } catch (e: Exception) {
+                notification.status = NotificationStatus.FAILED
+                log.error("Failed to build message for notification {}, member {}", notification.id, notification.memberId, e)
+            }
         }
 
         if (dispatchItems.isNotEmpty()) {

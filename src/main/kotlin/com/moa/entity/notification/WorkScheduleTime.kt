@@ -3,7 +3,7 @@ package com.moa.entity.notification
 import java.time.LocalDate
 import java.time.LocalTime
 
-data class WorkScheduleTime(
+class WorkScheduleTime private constructor(
     val clockInTime: LocalTime,
     val clockOutTime: LocalTime,
 ) {
