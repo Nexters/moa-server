@@ -4,6 +4,7 @@ spring:
       - moa-secret/oauth.yml
       - moa-secret/jwt.yml
       - moa-secret/db.yml
+      - moa-secret/admin.yml
 
   profiles:
     default: local
