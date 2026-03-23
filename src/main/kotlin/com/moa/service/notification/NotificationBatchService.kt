@@ -1,25 +1,23 @@
 package com.moa.service.notification
 
-import com.moa.entity.*
+import com.moa.entity.Workday
+import com.moa.entity.WorkPolicyVersion
 import com.moa.entity.notification.NotificationLog
-import com.moa.entity.notification.NotificationSetting
+import com.moa.entity.notification.NotificationSettingType
 import com.moa.entity.notification.NotificationType
-import com.moa.repository.*
+import com.moa.entity.notification.WorkScheduleTime
+import com.moa.repository.NotificationLogRepository
+import com.moa.repository.WorkPolicyVersionRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.LocalTime
 
 @Service
 class NotificationBatchService(
     private val workPolicyVersionRepository: WorkPolicyVersionRepository,
-    private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
     private val notificationLogRepository: NotificationLogRepository,
-    private val notificationSettingRepository: NotificationSettingRepository,
-    private val fcmTokenRepository: FcmTokenRepository,
-    private val termRepository: TermRepository,
-    private val termAgreementRepository: TermAgreementRepository,
+    private val notificationEligibilityService: NotificationEligibilityService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -31,8 +29,8 @@ class NotificationBatchService(
         if (workdayPolicies.isEmpty()) return
 
         val memberIds = workdayPolicies.map { it.memberId }
-        val requiredTermCodes = findRequiredTermCodes()
-        val context = loadContext(memberIds, date)
+        val requiredTermCodes = notificationEligibilityService.findRequiredTermCodes()
+        val context = notificationEligibilityService.loadContext(memberIds, date)
 
         log.info("Generating notifications for {} members on {}", memberIds.size, date)
 
@@ -57,79 +55,28 @@ class NotificationBatchService(
             .filter { todayWorkday in it.workdays }
     }
 
-    private fun findRequiredTermCodes(): Set<String> =
-        termRepository.findAll()
-            .filter { it.required }
-            .map { it.code }
-            .toSet()
-
-    private fun loadContext(memberIds: List<Long>, date: LocalDate): NotificationContext {
-        val agreementsMap = termAgreementRepository.findAllByMemberIdIn(memberIds)
-            .filter { it.agreed }
-            .groupBy { it.memberId }
-            .mapValues { (_, v) -> v.map { it.termCode }.toSet() }
-
-        val settingsMap = notificationSettingRepository.findAllByMemberIdIn(memberIds)
-            .associateBy { it.memberId }
-
-        val overridesMap = dailyWorkScheduleRepository.findAllByMemberIdInAndDate(memberIds, date)
-            .associateBy { it.memberId }
-
-        val tokensMap = fcmTokenRepository.findAllByMemberIdIn(memberIds)
-            .groupBy { it.memberId }
-
-        return NotificationContext(agreementsMap, settingsMap, overridesMap, tokensMap)
-    }
-
     private fun createNotificationsIfEligible(
         policy: WorkPolicyVersion,
         date: LocalDate,
         requiredCodes: Set<String>,
-        context: NotificationContext,
+        context: NotificationEligibilityContext,
     ): List<NotificationLog>? {
         val memberId = policy.memberId
 
         if (!context.hasAgreedToAll(memberId, requiredCodes)) return null
-        if (!context.isNotificationEnabled(memberId)) return null
-        if (context.isWorkSuppressed(memberId)) return null
+        if (!context.isSettingEnabled(memberId, NotificationSettingType.WORK)) return null
+        if (context.shouldSkipNotification(memberId)) return null
         if (!context.hasFcmToken(memberId)) return null
 
         val override = context.getOverride(memberId)
-        val clockInTime = truncateToMinute(override?.clockInTime ?: policy.clockInTime)
-        val clockOutTime = truncateToMinute(override?.clockOutTime ?: policy.clockOutTime)
-        val clockOutDate = if (clockOutTime < clockInTime) date.plusDays(1) else date
+        val schedule = WorkScheduleTime.of(
+            clockIn = override?.clockInTime ?: policy.clockInTime,
+            clockOut = override?.clockOutTime ?: policy.clockOutTime,
+        )
 
         return listOf(
-            NotificationLog(memberId, NotificationType.CLOCK_IN, date, clockInTime),
-            NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, clockOutTime),
+            NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime),
+            NotificationLog(memberId, NotificationType.CLOCK_OUT, schedule.clockOutDate(date), schedule.clockOutTime),
         )
-    }
-
-    private fun truncateToMinute(time: LocalTime): LocalTime =
-        LocalTime.of(time.hour, time.minute)
-
-    private class NotificationContext(
-        private val agreementsMap: Map<Long, Set<String>>,
-        private val settingsMap: Map<Long, NotificationSetting>,
-        private val overridesMap: Map<Long, DailyWorkSchedule>,
-        private val tokensMap: Map<Long, List<FcmToken>>,
-    ) {
-        fun hasAgreedToAll(memberId: Long, requiredCodes: Set<String>): Boolean {
-            val agreedCodes = agreementsMap[memberId] ?: emptySet()
-            return agreedCodes.containsAll(requiredCodes)
-        }
-
-        fun isNotificationEnabled(memberId: Long): Boolean =
-            settingsMap[memberId]?.workNotificationEnabled != false
-
-        fun isWorkSuppressed(memberId: Long): Boolean =
-            overridesMap[memberId]?.type == DailyWorkScheduleType.VACATION ||
-                overridesMap[memberId]?.type == DailyWorkScheduleType.NONE
-
-        fun hasFcmToken(memberId: Long): Boolean =
-            !tokensMap[memberId].isNullOrEmpty()
-
-        fun getOverride(memberId: Long): DailyWorkSchedule? =
-            overridesMap[memberId]
     }
 }

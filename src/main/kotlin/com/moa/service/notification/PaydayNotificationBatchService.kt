@@ -1,12 +1,12 @@
 package com.moa.service.notification
 
-import com.moa.entity.FcmToken
 import com.moa.entity.PaydayDay
 import com.moa.entity.Profile
 import com.moa.entity.notification.NotificationLog
-import com.moa.entity.notification.NotificationSetting
+import com.moa.entity.notification.NotificationSettingType
 import com.moa.entity.notification.NotificationType
-import com.moa.repository.*
+import com.moa.repository.NotificationLogRepository
+import com.moa.repository.ProfileRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -17,10 +17,7 @@ import java.time.LocalTime
 class PaydayNotificationBatchService(
     private val profileRepository: ProfileRepository,
     private val notificationLogRepository: NotificationLogRepository,
-    private val notificationSettingRepository: NotificationSettingRepository,
-    private val fcmTokenRepository: FcmTokenRepository,
-    private val termRepository: TermRepository,
-    private val termAgreementRepository: TermAgreementRepository,
+    private val notificationEligibilityService: NotificationEligibilityService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -32,8 +29,8 @@ class PaydayNotificationBatchService(
         if (profiles.isEmpty()) return
 
         val memberIds = profiles.map { it.memberId }
-        val requiredTermCodes = findRequiredTermCodes()
-        val context = loadContext(memberIds)
+        val requiredTermCodes = notificationEligibilityService.findRequiredTermCodes()
+        val context = notificationEligibilityService.loadContext(memberIds)
 
         log.info("Generating payday notifications for {} members on {}", memberIds.size, date)
 
@@ -63,55 +60,17 @@ class PaydayNotificationBatchService(
         return profileRepository.findAllByPaydayDay_ValueIn(candidatePaydayDays)
     }
 
-    private fun findRequiredTermCodes(): Set<String> =
-        termRepository.findAll()
-            .filter { it.required }
-            .map { it.code }
-            .toSet()
-
-    private fun loadContext(memberIds: List<Long>): PaydayNotificationContext {
-        val agreementsMap = termAgreementRepository.findAllByMemberIdIn(memberIds)
-            .filter { it.agreed }
-            .groupBy { it.memberId }
-            .mapValues { (_, v) -> v.map { it.termCode }.toSet() }
-
-        val settingsMap = notificationSettingRepository.findAllByMemberIdIn(memberIds)
-            .associateBy { it.memberId }
-
-        val tokensMap = fcmTokenRepository.findAllByMemberIdIn(memberIds)
-            .groupBy { it.memberId }
-
-        return PaydayNotificationContext(agreementsMap, settingsMap, tokensMap)
-    }
-
     private fun createNotificationIfEligible(
         memberId: Long,
         date: LocalDate,
         requiredCodes: Set<String>,
-        context: PaydayNotificationContext,
+        context: NotificationEligibilityContext,
     ): NotificationLog? {
         if (!context.hasAgreedToAll(memberId, requiredCodes)) return null
-        if (!context.isPaydayNotificationEnabled(memberId)) return null
+        if (!context.isSettingEnabled(memberId, NotificationSettingType.PAYDAY)) return null
         if (!context.hasFcmToken(memberId)) return null
 
         return NotificationLog(memberId, NotificationType.PAYDAY, date, PAYDAY_NOTIFICATION_TIME)
-    }
-
-    private class PaydayNotificationContext(
-        private val agreementsMap: Map<Long, Set<String>>,
-        private val settingsMap: Map<Long, NotificationSetting>,
-        private val tokensMap: Map<Long, List<FcmToken>>,
-    ) {
-        fun hasAgreedToAll(memberId: Long, requiredCodes: Set<String>): Boolean {
-            val agreedCodes = agreementsMap[memberId] ?: emptySet()
-            return agreedCodes.containsAll(requiredCodes)
-        }
-
-        fun isPaydayNotificationEnabled(memberId: Long): Boolean =
-            settingsMap[memberId]?.paydayNotificationEnabled != false
-
-        fun hasFcmToken(memberId: Long): Boolean =
-            !tokensMap[memberId].isNullOrEmpty()
     }
 
     companion object {

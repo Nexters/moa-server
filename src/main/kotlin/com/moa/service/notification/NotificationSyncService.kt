@@ -4,6 +4,7 @@ import com.moa.entity.DailyWorkScheduleType
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationStatus
 import com.moa.entity.notification.NotificationType
+import com.moa.entity.notification.WorkScheduleTime
 import com.moa.repository.NotificationLogRepository
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -47,20 +48,20 @@ class NotificationSyncService(
         for (pendingLog in pendingLogs) {
             when (pendingLog.notificationType) {
                 NotificationType.CLOCK_IN -> {
-                    clockInTime?.let { pendingLog.scheduledTime = truncateToMinute(it) }
+                    clockInTime?.let {
+                        pendingLog.scheduledTime = LocalTime.of(it.hour, it.minute)
+                    }
                     pendingLog.scheduledDate = date
                 }
 
                 NotificationType.CLOCK_OUT -> {
-                    clockOutTime?.let {
-                        val truncated = truncateToMinute(it)
-                        val clockInTruncated = clockInTime?.let(::truncateToMinute)
-                        if (clockInTruncated != null && truncated < clockInTruncated) {
-                            pendingLog.scheduledDate = date.plusDays(1)
-                        } else {
-                            pendingLog.scheduledDate = date
-                        }
-                        pendingLog.scheduledTime = truncated
+                    if (clockInTime != null && clockOutTime != null) {
+                        val schedule = WorkScheduleTime.of(clockInTime, clockOutTime)
+                        pendingLog.scheduledDate = schedule.clockOutDate(date)
+                        pendingLog.scheduledTime = schedule.clockOutTime
+                    } else if (clockOutTime != null) {
+                        pendingLog.scheduledTime = LocalTime.of(clockOutTime.hour, clockOutTime.minute)
+                        pendingLog.scheduledDate = date
                     }
                 }
 
@@ -95,10 +96,8 @@ class NotificationSyncService(
         if (clockInTime == null || clockOutTime == null) return
 
         val now = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
-        val logs = mutableListOf<NotificationLog>()
-        val truncatedIn = truncateToMinute(clockInTime)
-        val truncatedOut = truncateToMinute(clockOutTime)
-        val isMidnightCrossing = truncatedOut < truncatedIn
+        val schedule = WorkScheduleTime.of(clockInTime, clockOutTime)
+        val clockOutDate = schedule.clockOutDate(date)
         val relatedDates = listOf(date, date.plusDays(1))
         val existingLogs = notificationLogRepository
             .findAllByMemberIdAndScheduledDateInAndNotificationTypeIn(
@@ -107,23 +106,24 @@ class NotificationSyncService(
                 workNotificationTypes,
             )
 
-        if (date.atTime(truncatedIn).isAfter(now) && existingLogs.none {
+        val logs = mutableListOf<NotificationLog>()
+
+        if (date.atTime(schedule.clockInTime).isAfter(now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_IN &&
                     it.scheduledDate == date &&
                     it.status != NotificationStatus.CANCELLED
             }
         ) {
-            logs.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, truncatedIn))
+            logs.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime))
         }
 
-        val clockOutDate = if (isMidnightCrossing) date.plusDays(1) else date
-        if (clockOutDate.atTime(truncatedOut).isAfter(now) && existingLogs.none {
+        if (clockOutDate.atTime(schedule.clockOutTime).isAfter(now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_OUT &&
                     it.scheduledDate == clockOutDate &&
                     it.status != NotificationStatus.CANCELLED
             }
         ) {
-            logs.add(NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, truncatedOut))
+            logs.add(NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, schedule.clockOutTime))
         }
 
         if (logs.isNotEmpty()) {
@@ -135,6 +135,4 @@ class NotificationSyncService(
         }
     }
 
-    private fun truncateToMinute(time: LocalTime): LocalTime =
-        LocalTime.of(time.hour, time.minute)
 }
