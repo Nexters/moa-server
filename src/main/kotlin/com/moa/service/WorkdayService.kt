@@ -154,6 +154,7 @@ class WorkdayService(
 
     @Transactional
     fun upsertSchedule(memberId: Long, date: LocalDate, req: WorkdayUpsertRequest): WorkdayResponse {
+        val existingSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
         val (clockIn, clockOut) = when (req.type) {
             DailyWorkScheduleType.WORK -> {
                 val clockIn = req.clockInTime ?: throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
@@ -161,12 +162,17 @@ class WorkdayService(
                 clockIn to clockOut
             }
 
-            DailyWorkScheduleType.VACATION -> resolveVacationTimes(memberId, date, req)
+            DailyWorkScheduleType.VACATION -> {
+                val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
+                    ?: throw NotFoundException()
+                validateVacationInput(date, existingSchedule, policy)
+                resolveVacationTimes(req, policy)
+            }
 
             DailyWorkScheduleType.NONE -> null to null
         }
 
-        val workSchedule = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
+        val workSchedule = existingSchedule
             ?.apply {
                 this.type = req.type
                 this.clockInTime = clockIn
@@ -235,9 +241,61 @@ class WorkdayService(
         )
     }
 
+    private fun resolveMonthRange(year: Int, month: Int): Pair<LocalDate, LocalDate> {
+        val start = LocalDate.of(year, month, 1)
+        return start to start.withDayOfMonth(start.lengthOfMonth())
+    }
+
     /**
-     * 저장된 스케줄과 정책 기본값 중 어떤 값을 응답에 반영할지 한 곳에서 결정하기 위한 헬퍼입니다.
+     * 특정 월을 대표하는 정책 버전을 조회하는 규칙을 명시적으로 드러내기 위한 헬퍼입니다.
+     *
+     * 이 서비스는 월말 기준으로 그 달에 적용되는 최신 정책을 사용하므로,
+     * 조회 기준일 계산과 리포지토리 호출을 한 곳에 묶어 의미를 고정합니다.
      */
+    private fun resolveMonthlyRepresentativePolicyOrNull(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ): WorkPolicyVersion? {
+        val lastDayOfMonth = YearMonth.of(year, month).atEndOfMonth()
+
+        return workPolicyVersionRepository
+            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                memberId,
+                lastDayOfMonth,
+            )
+    }
+
+    /**
+     * 특정 월을 대표하는 급여 버전을 조회하는 규칙을 명시적으로 드러내기 위한 헬퍼입니다.
+     *
+     * 이 서비스는 월말 기준으로 그 달에 적용되는 최신 급여를 사용하므로,
+     * 조회 기준일 계산과 리포지토리 호출을 한 곳에 묶어 의미를 고정합니다.
+     */
+    private fun resolveMonthlyRepresentativePayrollOrNull(
+        memberId: Long,
+        year: Int,
+        month: Int,
+    ) = payrollVersionRepository
+        .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+            memberId,
+            YearMonth.of(year, month).atEndOfMonth(),
+        )
+
+    private fun resolvePaydayDay(memberId: Long): PaydayDay =
+        profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()
+
+    private fun resolveSchedule(
+        saved: DailyWorkSchedule?,
+        policy: WorkPolicyVersion?,
+        date: LocalDate,
+    ): ResolvedSchedule {
+        if (policy == null) {
+            return ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
+        }
+        return resolveScheduleForDate(saved, policy, date)
+    }
+
     private fun resolveScheduleForDate(
         saved: DailyWorkSchedule?,
         policy: WorkPolicyVersion,
@@ -254,9 +312,36 @@ class WorkdayService(
         }
     }
 
-    /**
-     * 근무일 화면 응답 생성 규칙을 한 곳에 모아 두기 위한 헬퍼입니다.
-     */
+    private fun validateVacationInput(
+        date: LocalDate,
+        savedSchedule: DailyWorkSchedule?,
+        policy: WorkPolicyVersion,
+    ) {
+        if (savedSchedule?.type == DailyWorkScheduleType.VACATION) return
+
+        val schedule = resolveSchedule(savedSchedule, policy, date)
+        val isDefaultWorkSchedule = schedule.type == DailyWorkScheduleType.WORK &&
+                schedule.clockIn == policy.clockInTime &&
+                schedule.clockOut == policy.clockOutTime
+
+        if (!isDefaultWorkSchedule) {
+            throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
+        }
+    }
+
+    private fun resolveVacationTimes(
+        req: WorkdayUpsertRequest,
+        policy: WorkPolicyVersion,
+    ): Pair<LocalTime, LocalTime> {
+        if (req.clockInTime != null && req.clockOutTime != null) {
+            val clockIn = req.clockInTime
+            val clockOut = req.clockOutTime
+            return clockIn to clockOut
+        }
+
+        return policy.clockInTime to policy.clockOutTime
+    }
+
     private fun createWorkdayResponse(
         memberId: Long,
         date: LocalDate,
@@ -294,31 +379,6 @@ class WorkdayService(
         )
     }
 
-    /**
-     * 정책이 없는 경우를 포함해 스케줄 해석 진입점을 단순화하기 위한 헬퍼입니다.
-     */
-    private fun resolveSchedule(
-        saved: DailyWorkSchedule?,
-        policy: WorkPolicyVersion?,
-        date: LocalDate,
-    ): ResolvedSchedule {
-        if (policy == null) {
-            return ResolvedSchedule(DailyWorkScheduleType.NONE, null, null)
-        }
-        return resolveScheduleForDate(saved, policy, date)
-    }
-
-    /**
-     * 월 시작일과 마지막 날 계산을 한 곳으로 모아 날짜 범위 표현을 통일하기 위한 헬퍼입니다.
-     */
-    private fun resolveMonthRange(year: Int, month: Int): Pair<LocalDate, LocalDate> {
-        val start = LocalDate.of(year, month, 1)
-        return start to start.withDayOfMonth(start.lengthOfMonth())
-    }
-
-    /**
-     * 화면에 보여줄 `dailyPay` 계산 책임을 월 정산 로직과 분리하기 위한 헬퍼입니다.
-     */
     private fun resolveDisplayedDailyPay(
         memberId: Long,
         date: LocalDate,
@@ -366,9 +426,6 @@ class WorkdayService(
         )
     } ?: BigDecimal.ZERO
 
-    /**
-     * 월 소득 집계에 포함 가능한 근무만 선별하기 위한 헬퍼입니다.
-     */
     private fun resolveCompletedWorkForSettlement(
         schedule: ResolvedSchedule,
         status: DailyWorkStatusType,
@@ -382,70 +439,6 @@ class WorkdayService(
         val clockOut = schedule.clockOut ?: return null
         return CompletedWork(schedule.type, clockIn, clockOut)
     }
-
-    /**
-     * 휴무 입력 시 사용할 시간을 결정하는 규칙을 `upsertSchedule`에서 분리하기 위한 헬퍼입니다.
-     */
-    private fun resolveVacationTimes(
-        memberId: Long,
-        date: LocalDate,
-        req: WorkdayUpsertRequest,
-    ): Pair<LocalTime, LocalTime> {
-        if (req.clockInTime != null && req.clockOutTime != null) {
-            val clockIn = req.clockInTime
-            val clockOut = req.clockOutTime
-            return clockIn to clockOut
-        }
-
-        val policy = workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(memberId, date)
-            ?: workPolicyVersionRepository.findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId,
-                LocalDate.now()
-            )
-            ?: throw NotFoundException()
-
-        return policy.clockInTime to policy.clockOutTime
-    }
-
-    /**
-     * 특정 월을 대표하는 정책 버전을 조회하는 규칙을 명시적으로 드러내기 위한 헬퍼입니다.
-     *
-     * 이 서비스는 월말 기준으로 그 달에 적용되는 최신 정책을 사용하므로,
-     * 조회 기준일 계산과 리포지토리 호출을 한 곳에 묶어 의미를 고정합니다.
-     */
-    private fun resolveMonthlyRepresentativePolicyOrNull(
-        memberId: Long,
-        year: Int,
-        month: Int,
-    ): WorkPolicyVersion? {
-        val lastDayOfMonth = YearMonth.of(year, month).atEndOfMonth()
-
-        return workPolicyVersionRepository
-            .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                memberId,
-                lastDayOfMonth,
-            )
-    }
-
-    /**
-     * 특정 월을 대표하는 급여 버전을 조회하는 규칙을 명시적으로 드러내기 위한 헬퍼입니다.
-     *
-     * 이 서비스는 월말 기준으로 그 달에 적용되는 최신 급여를 사용하므로,
-     * 조회 기준일 계산과 리포지토리 호출을 한 곳에 묶어 의미를 고정합니다.
-     */
-    private fun resolveMonthlyRepresentativePayrollOrNull(
-        memberId: Long,
-        year: Int,
-        month: Int,
-    ) = payrollVersionRepository
-        .findTopByMemberIdAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-            memberId,
-            YearMonth.of(year, month).atEndOfMonth(),
-        )
-
-    private fun resolvePaydayDay(memberId: Long): PaydayDay =
-        profileRepository.findByMemberId(memberId)?.paydayDay ?: throw NotFoundException()
 }
 
 private data class ResolvedSchedule(
