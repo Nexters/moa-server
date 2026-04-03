@@ -16,6 +16,10 @@ import java.time.*
  */
 @Service
 class CompensationCalculator {
+    companion object {
+        private const val MONEY_SCALE = 10
+    }
+
     /**
      * 주어진 기간의 기준 근무 시간을 계산합니다.
      *
@@ -151,7 +155,7 @@ class CompensationCalculator {
 
         if (workDaysCount == 0) return BigDecimal.ZERO
 
-        return monthlySalary.divide(BigDecimal(workDaysCount), 0, RoundingMode.HALF_UP)
+        return monthlySalary.divide(BigDecimal(workDaysCount), MONEY_SCALE, RoundingMode.HALF_UP)
     }
 
     /**
@@ -171,8 +175,9 @@ class CompensationCalculator {
         actualWorkMinutes: Long,
     ): BigDecimal {
         if (policyWorkMinutes <= 0) return dailyRate
-        val minuteRate = dailyRate.divide(BigDecimal(policyWorkMinutes), 10, RoundingMode.HALF_UP)
-        return minuteRate.multiply(BigDecimal(actualWorkMinutes)).setScale(0, RoundingMode.HALF_UP)
+        if (actualWorkMinutes == policyWorkMinutes) return dailyRate
+        val minuteRate = dailyRate.divide(BigDecimal(policyWorkMinutes), MONEY_SCALE, RoundingMode.HALF_UP)
+        return minuteRate.multiply(BigDecimal(actualWorkMinutes))
     }
 
     /**
