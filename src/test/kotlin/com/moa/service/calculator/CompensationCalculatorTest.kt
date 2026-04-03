@@ -87,7 +87,7 @@ class CompensationCalculatorTest {
     }
 
     @Test
-    fun `휴무이면 저장된 시간 기반으로 급여를 계산한다`() {
+    fun `휴무가 정책 근무시간과 같으면 기준 일급과 동일한 급여를 계산한다`() {
         val result = compensationCalculator.calculateDailyEarnings(
             date = DATE,
             salaryType = SalaryInputType.MONTHLY,
@@ -98,7 +98,7 @@ class CompensationCalculatorTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571620"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571429"))
     }
 
     @Test
@@ -117,7 +117,7 @@ class CompensationCalculatorTest {
     }
 
     @Test
-    fun `정상 근무시 일급을 반환한다`() {
+    fun `정상 근무시 기준 일급을 반환한다`() {
         val result = compensationCalculator.calculateDailyEarnings(
             date = DATE,
             salaryType = SalaryInputType.MONTHLY,
@@ -128,7 +128,7 @@ class CompensationCalculatorTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571620"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571429"))
     }
 
     @Test
@@ -240,7 +240,7 @@ class CompensationCalculatorTest {
     }
 
     @Test
-    fun `일급 계산 결과의 소수점은 반올림한다`() {
+    fun `일급 계산 결과는 월 합산 전까지 소수점을 유지한다`() {
         val result = compensationCalculator.calculateDailyRate(
             targetDate = LocalDate.of(2025, 6, 1),
             salaryType = SalaryInputType.MONTHLY,
@@ -291,7 +291,7 @@ class CompensationCalculatorTest {
 
         val result = compensationCalculator.calculateEarnings(dailyRate, 540, 540)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("100000.0000000080"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("100000"))
     }
 
     @Test

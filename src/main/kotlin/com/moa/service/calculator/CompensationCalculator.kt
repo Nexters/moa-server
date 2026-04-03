@@ -175,6 +175,7 @@ class CompensationCalculator {
         actualWorkMinutes: Long,
     ): BigDecimal {
         if (policyWorkMinutes <= 0) return dailyRate
+        if (actualWorkMinutes == policyWorkMinutes) return dailyRate
         val minuteRate = dailyRate.divide(BigDecimal(policyWorkMinutes), MONEY_SCALE, RoundingMode.HALF_UP)
         return minuteRate.multiply(BigDecimal(actualWorkMinutes))
     }
