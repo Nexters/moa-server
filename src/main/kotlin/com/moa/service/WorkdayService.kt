@@ -14,6 +14,7 @@ import com.moa.service.notification.NotificationSyncService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -77,7 +78,7 @@ class WorkdayService(
             .findAllByMemberIdAndDateBetween(memberId, start, lastCalculableDate)
             .associateBy { it.date }
 
-        var workedEarnings = 0L
+        var workedEarnings = BigDecimal.ZERO
         var workedMinutes = 0L
         var date = start
         while (!date.isAfter(lastCalculableDate)) {
@@ -95,21 +96,21 @@ class WorkdayService(
                     completedWork.clockIn,
                     completedWork.clockOut,
                 )
-                workedEarnings += calculateDailyEarnings(
+                workedEarnings = workedEarnings.add(calculateDailyEarnings(
                     memberId,
                     date,
                     monthlyPolicy,
                     completedWork.type,
                     completedWork.clockIn,
                     completedWork.clockOut,
-                ).toLong()
+                ))
             }
 
             date = date.plusDays(1)
         }
 
         return MonthlyEarningsResponse(
-            workedEarnings = workedEarnings,
+            workedEarnings = workedEarnings.setScale(0, RoundingMode.HALF_UP).toLong(),
             standardSalary = standardSalary,
             workedMinutes = workedMinutes,
             standardMinutes = standardMinutes,
@@ -389,7 +390,7 @@ class WorkdayService(
 
         return calculateDailyEarnings(
             memberId, date, policy, schedule.type, schedule.clockIn, schedule.clockOut,
-        ).toInt()
+        ).setScale(0, RoundingMode.HALF_UP).toInt()
     }
 
     /**

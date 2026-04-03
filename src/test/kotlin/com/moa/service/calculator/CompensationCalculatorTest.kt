@@ -7,6 +7,7 @@ import com.moa.entity.Workday
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
@@ -97,7 +98,7 @@ class CompensationCalculatorTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        assertThat(result.toLong()).isEqualTo(142857L)
+        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571620"))
     }
 
     @Test
@@ -127,7 +128,7 @@ class CompensationCalculatorTest {
             clockOutTime = LocalTime.of(18, 0),
         )
 
-        assertThat(result.toLong()).isEqualTo(142857L)
+        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571620"))
     }
 
     @Test
@@ -189,7 +190,7 @@ class CompensationCalculatorTest {
             clockOutTime = null,
         )
 
-        assertThat(result.toLong()).isEqualTo(142857L)
+        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571429"))
     }
 
     @Test
@@ -207,7 +208,7 @@ class CompensationCalculatorTest {
             ),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("142857"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("142857.1428571429"))
     }
 
     @Test
@@ -235,7 +236,7 @@ class CompensationCalculatorTest {
             ),
         )
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("230769"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("230769.2307692308"))
     }
 
     @Test
@@ -251,7 +252,7 @@ class CompensationCalculatorTest {
             ),
         )
 
-        assertThat(result.scale()).isEqualTo(0)
+        assertThat(result.scale()).isGreaterThan(0)
     }
 
     @Test
@@ -290,7 +291,7 @@ class CompensationCalculatorTest {
 
         val result = compensationCalculator.calculateEarnings(dailyRate, 540, 540)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("100000"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("100000.0000000080"))
     }
 
     @Test
@@ -299,7 +300,7 @@ class CompensationCalculatorTest {
 
         val result = compensationCalculator.calculateEarnings(dailyRate, 540, 600)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("111111"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("111111.1111111200"))
     }
 
     @Test
@@ -308,7 +309,30 @@ class CompensationCalculatorTest {
 
         val result = compensationCalculator.calculateEarnings(dailyRate, 540, 480)
 
-        assertThat(result).isEqualByComparingTo(BigDecimal("88889"))
+        assertThat(result).isEqualByComparingTo(BigDecimal("88888.8888888960"))
+    }
+
+    @Test
+    fun `월급을 일별 반올림하지 않고 월 합계에서만 반올림하면 월 총액이 유지된다`() {
+        val dailyRate = compensationCalculator.calculateDailyRate(
+            targetDate = LocalDate.of(2025, 6, 1),
+            salaryType = SalaryInputType.MONTHLY,
+            salaryAmount = 3_000_000,
+            workDays = setOf(
+                DayOfWeek.MONDAY,
+                DayOfWeek.TUESDAY,
+                DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY,
+                DayOfWeek.FRIDAY,
+            ),
+        )
+
+        val monthlyTotal = (1..21).fold(BigDecimal.ZERO) { acc, _ ->
+            acc.add(compensationCalculator.calculateEarnings(dailyRate, 540, 540))
+        }
+
+        assertThat(monthlyTotal.setScale(0, RoundingMode.HALF_UP))
+            .isEqualByComparingTo(BigDecimal("3000000"))
     }
 
     @Test
