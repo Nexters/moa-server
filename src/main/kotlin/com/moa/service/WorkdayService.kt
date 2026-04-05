@@ -166,8 +166,7 @@ class WorkdayService(
             DailyWorkScheduleType.VACATION -> {
                 val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
                     ?: throw NotFoundException()
-                validateVacationInput(date, existingSchedule, policy)
-                resolveVacationTimes(req, policy)
+                resolveVacationTimes(date, req, existingSchedule, policy)
             }
 
             DailyWorkScheduleType.NONE -> null to null
@@ -313,31 +312,21 @@ class WorkdayService(
         }
     }
 
-    private fun validateVacationInput(
-        date: LocalDate,
-        savedSchedule: DailyWorkSchedule?,
-        policy: WorkPolicyVersion,
-    ) {
-        if (savedSchedule?.type == DailyWorkScheduleType.VACATION) return
-
-        val schedule = resolveSchedule(savedSchedule, policy, date)
-        val isDefaultWorkSchedule = schedule.type == DailyWorkScheduleType.WORK &&
-                schedule.clockIn == policy.clockInTime &&
-                schedule.clockOut == policy.clockOutTime
-
-        if (!isDefaultWorkSchedule) {
-            throw BadRequestException(ErrorCode.INVALID_WORKDAY_INPUT)
-        }
-    }
-
     private fun resolveVacationTimes(
+        date: LocalDate,
         req: WorkdayUpsertRequest,
+        savedSchedule: DailyWorkSchedule?,
         policy: WorkPolicyVersion,
     ): Pair<LocalTime, LocalTime> {
         if (req.clockInTime != null && req.clockOutTime != null) {
             val clockIn = req.clockInTime
             val clockOut = req.clockOutTime
             return clockIn to clockOut
+        }
+
+        val schedule = resolveSchedule(savedSchedule, policy, date)
+        if (schedule.clockIn != null && schedule.clockOut != null) {
+            return schedule.clockIn to schedule.clockOut
         }
 
         return policy.clockInTime to policy.clockOutTime
