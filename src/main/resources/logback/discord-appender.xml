@@ -8,9 +8,9 @@
                 member=%X{memberId:-?}%n📍 %logger{36}%n```%ex{full}```
             </pattern>
         </layout>
-        <username>플랑크톤</username>
+        <username>Spring</username>
         <avatarUrl>
-            https://mblogthumb-phinf.pstatic.net/MjAyMDExMjdfODUg/MDAxNjA2NDU4MzcyODE4.a1qAABGc8gt9gYfHdgYEq0iGrarlcf1Kb5hY9SXDX7kg.MktotgM1Bl3XJfXJgtZPHRGQ89rAvdDnjBgkhu2bIJ8g.PNG.gbent1/%ED%94%8C%EB%9E%91%ED%81%AC%ED%86%A4_%EA%B7%B8%EB%A6%AC%EA%B8%B0.png?type=w800
+            https://cdn.freebiesupply.com/logos/large/2x/spring-3-logo-png-transparent.png
         </avatarUrl>
         <tts>false</tts>
     </appender>
