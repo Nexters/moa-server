@@ -18,7 +18,11 @@ class NotificationEarningsService(
     private val dailyWorkScheduleRepository: DailyWorkScheduleRepository,
     private val compensationCalculator: CompensationCalculator,
 ) {
-    fun calculateTodayEarnings(memberId: Long, date: LocalDate): BigDecimal {
+    fun calculateTodayEarnings(
+        memberId: Long,
+        date: LocalDate,
+        publicHolidays: Set<LocalDate>,
+    ): BigDecimal {
         val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
             ?: throw NotFoundException()
         val payroll = resolveMonthlyRepresentativePayrollOrNull(memberId, date.year, date.monthValue)
@@ -33,6 +37,7 @@ class NotificationEarningsService(
             type = override?.type ?: DailyWorkScheduleType.WORK,
             clockInTime = override?.clockInTime,
             clockOutTime = override?.clockOutTime,
+            publicHolidays = publicHolidays,
         )
     }
 
