@@ -5,6 +5,7 @@ spring:
       - moa-secret/jwt.yml
       - moa-secret/db.yml
       - moa-secret/admin.yml
+      - moa-secret/discord.yml
 
   profiles:
     default: local

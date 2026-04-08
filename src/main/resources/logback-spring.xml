@@ -14,8 +14,10 @@
     </springProfile>
 
     <springProfile name="prod">
+        <include resource="logback/discord-appender.xml"/>
         <root level="WARN">
             <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_DISCORD"/>
         </root>
         <logger name="com.moa" level="INFO"/>
     </springProfile>
