@@ -5,11 +5,13 @@ import com.moa.entity.notification.NotificationStatus
 import com.moa.repository.FcmTokenRepository
 import com.moa.repository.NotificationLogRepository
 import com.moa.service.FcmService
+import com.moa.service.PublicHolidayService
 import com.moa.service.dto.FcmRequest
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 
 @Service
 class NotificationDispatchService(
@@ -17,6 +19,7 @@ class NotificationDispatchService(
     private val fcmTokenRepository: FcmTokenRepository,
     private val fcmService: FcmService,
     private val notificationMessageBuilder: NotificationMessageBuilder,
+    private val publicHolidayService: PublicHolidayService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -35,6 +38,11 @@ class NotificationDispatchService(
         val tokensByMemberId = fcmTokenRepository.findAllByMemberIdIn(memberIds)
             .groupBy { it.memberId }
 
+        val holidaysByMonth = pendingLogs
+            .map { YearMonth.from(it.scheduledDate) }
+            .distinct()
+            .associateWith { publicHolidayService.getHolidayDatesForMonth(it.year, it.monthValue) }
+
         val dispatchItems = mutableListOf<DispatchItem>()
         for (notification in pendingLogs) {
             val tokens = tokensByMemberId[notification.memberId].orEmpty()
@@ -44,7 +52,8 @@ class NotificationDispatchService(
                 continue
             }
             try {
-                val data = notificationMessageBuilder.buildMessage(notification).toData()
+                val publicHolidays = holidaysByMonth[YearMonth.from(notification.scheduledDate)] ?: emptySet()
+                val data = notificationMessageBuilder.buildMessage(notification, publicHolidays).toData()
                 tokens.forEach { dispatchItems.add(DispatchItem(notification, it.token, data)) }
             } catch (e: Exception) {
                 notification.status = NotificationStatus.FAILED
