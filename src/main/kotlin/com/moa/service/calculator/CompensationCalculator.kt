@@ -34,12 +34,14 @@ class CompensationCalculator {
         policy: WorkPolicyVersion,
         start: LocalDate,
         endInclusive: LocalDate,
+        publicHolidays: Set<LocalDate> = emptySet(),
     ): Long {
         val standardDailyMinutes = calculateWorkMinutes(policy.clockInTime, policy.clockOutTime)
         val standardWorkDaysCount = getWorkDaysInPeriod(
             start = start,
             end = endInclusive.plusDays(1),
             workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
+            publicHolidays = publicHolidays,
         )
         return standardDailyMinutes * standardWorkDaysCount
     }
@@ -104,6 +106,7 @@ class CompensationCalculator {
         type: DailyWorkScheduleType,
         clockInTime: LocalTime?,
         clockOutTime: LocalTime?,
+        publicHolidays: Set<LocalDate> = emptySet(),
     ): BigDecimal {
         if (type == DailyWorkScheduleType.NONE) return BigDecimal.ZERO
 
@@ -112,6 +115,7 @@ class CompensationCalculator {
             salaryType = salaryType,
             salaryAmount = salaryAmount,
             workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
+            publicHolidays = publicHolidays,
         )
         if (dailyRate == BigDecimal.ZERO) return dailyRate
 
@@ -140,7 +144,8 @@ class CompensationCalculator {
         targetDate: LocalDate,
         salaryType: SalaryInputType,
         salaryAmount: Long,
-        workDays: Set<DayOfWeek>
+        workDays: Set<DayOfWeek>,
+        publicHolidays: Set<LocalDate> = emptySet(),
     ): BigDecimal {
         val monthlySalary = when (salaryType) {
             SalaryInputType.ANNUAL -> salaryAmount.toBigDecimal().divide(BigDecimal(12), 0, RoundingMode.HALF_UP)
@@ -151,7 +156,7 @@ class CompensationCalculator {
         val periodStart = yearMonth.atDay(1)
         val periodEnd = yearMonth.atEndOfMonth().plusDays(1)
 
-        val workDaysCount = getWorkDaysInPeriod(periodStart, periodEnd, workDays)
+        val workDaysCount = getWorkDaysInPeriod(periodStart, periodEnd, workDays, publicHolidays)
 
         if (workDaysCount == 0) return BigDecimal.ZERO
 
@@ -194,8 +199,9 @@ class CompensationCalculator {
     fun getWorkDaysInPeriod(
         start: LocalDate,
         end: LocalDate,
-        workDays: Set<DayOfWeek>
+        workDays: Set<DayOfWeek>,
+        publicHolidays: Set<LocalDate> = emptySet(),
     ): Int = generateSequence(start) { it.plusDays(1) }
         .takeWhile { it.isBefore(end) }
-        .count { it.dayOfWeek in workDays }
+        .count { it.dayOfWeek in workDays && it !in publicHolidays }
 }

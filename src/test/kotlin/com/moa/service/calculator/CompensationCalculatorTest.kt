@@ -362,4 +362,61 @@ class CompensationCalculatorTest {
 
         assertThat(result).isEqualTo(1)
     }
+
+    @Test
+    fun `근무요일인 공휴일은 근무일 수에서 차감된다`() {
+        val holidays = setOf(LocalDate.of(2025, 6, 3)) // 화요일
+        val result = compensationCalculator.getWorkDaysInPeriod(
+            start = LocalDate.of(2025, 6, 1),
+            end = LocalDate.of(2025, 7, 1),
+            workDays = setOf(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
+            ),
+            publicHolidays = holidays,
+        )
+
+        assertThat(result).isEqualTo(20)
+    }
+
+    @Test
+    fun `비근무요일인 공휴일은 근무일 수에 영향을 주지 않는다`() {
+        val holidays = setOf(LocalDate.of(2025, 6, 7)) // 토요일
+        val result = compensationCalculator.getWorkDaysInPeriod(
+            start = LocalDate.of(2025, 6, 1),
+            end = LocalDate.of(2025, 7, 1),
+            workDays = setOf(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
+            ),
+            publicHolidays = holidays,
+        )
+
+        assertThat(result).isEqualTo(21)
+    }
+
+    @Test
+    fun `공휴일이 포함된 월은 일급이 높아진다`() {
+        val weekdays = setOf(
+            DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
+            DayOfWeek.THURSDAY, DayOfWeek.FRIDAY,
+        )
+        val holidays = setOf(LocalDate.of(2025, 6, 3)) // 화요일
+
+        val rateWithoutHoliday = compensationCalculator.calculateDailyRate(
+            targetDate = LocalDate.of(2025, 6, 1),
+            salaryType = SalaryInputType.MONTHLY,
+            salaryAmount = 3_000_000,
+            workDays = weekdays,
+        )
+        val rateWithHoliday = compensationCalculator.calculateDailyRate(
+            targetDate = LocalDate.of(2025, 6, 1),
+            salaryType = SalaryInputType.MONTHLY,
+            salaryAmount = 3_000_000,
+            workDays = weekdays,
+            publicHolidays = holidays,
+        )
+
+        assertThat(rateWithHoliday).isGreaterThan(rateWithoutHoliday)
+    }
 }
