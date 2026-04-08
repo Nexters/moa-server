@@ -4,6 +4,7 @@ import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationType
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.text.NumberFormat
 import java.util.*
 
@@ -30,7 +31,8 @@ class NotificationMessageBuilder(
         if (earnings == BigDecimal.ZERO) {
             return CLOCK_OUT_FALLBACK_BODY
         }
-        val formatted = NumberFormat.getNumberInstance(Locale.KOREA).format(earnings)
+        val formatted = NumberFormat.getNumberInstance(Locale.KOREA)
+            .format(earnings.setScale(0, RoundingMode.HALF_UP))
         return notification.notificationType.getBody(formatted)
     }
 
