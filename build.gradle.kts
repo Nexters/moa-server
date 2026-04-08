@@ -17,6 +17,7 @@ java {
 
 repositories {
     mavenCentral()
+    maven(url = "https://jitpack.io")
 }
 
 dependencies {
@@ -42,6 +43,7 @@ dependencies {
 
     // fcm
     implementation("com.google.firebase:firebase-admin:9.4.3")
+    implementation("com.github.napstr:logback-discord-appender:1.0.0")
 
     // etc
     implementation("org.jetbrains.kotlin:kotlin-reflect")

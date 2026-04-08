@@ -21,3 +21,7 @@ oidc:
   apple:
     jwks-uri: ${secret.oauth.apple.jwks-uri}
     cache-ttl-seconds: ${secret.oauth.cache-ttl-seconds}
+
+logging:
+  discord:
+    webhook-uri: ${secret.discord.webhook-uri}
