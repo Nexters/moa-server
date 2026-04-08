@@ -66,6 +66,7 @@ class NotificationSyncService(
                 }
 
                 NotificationType.PAYDAY -> Unit
+                NotificationType.PUBLIC_HOLIDAY -> Unit
             }
         }
         log.info("Synced pending notifications for member {} on {}", memberId, date)
@@ -74,7 +75,7 @@ class NotificationSyncService(
     private fun findPendingWorkNotifications(memberId: Long, date: LocalDate): List<NotificationLog> {
         val sameDayLogs = notificationLogRepository
             .findAllByMemberIdAndScheduledDateInAndStatus(memberId, listOf(date), NotificationStatus.PENDING)
-            .filter { it.notificationType != NotificationType.PAYDAY }
+            .filter { it.notificationType != NotificationType.PAYDAY && it.notificationType != NotificationType.PUBLIC_HOLIDAY }
         val nextDayClockOutLogs = notificationLogRepository
             .findAllByMemberIdAndScheduledDateAndNotificationTypeAndStatus(
                 memberId,

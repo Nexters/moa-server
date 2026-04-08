@@ -7,23 +7,32 @@ import java.time.LocalDate
  */
 enum class DailyEventType {
     /** 급여일에 해당하는 경우 */
-    PAYDAY;
+    PAYDAY,
+
+    /** 공휴일에 해당하는 경우 */
+    PUBLIC_HOLIDAY;
 
     companion object {
         /**
-         * 특정 일자와 급여일 설정을 바탕으로 해당 일자에 표시할 이벤트를 판정합니다.
-         *
-         * 현재는 급여일([PAYDAY])만 지원하며 추후 공휴일 등 다른 이벤트가 추가될 수 있습니다.
+         * 특정 일자와 급여일 설정, 공휴일 목록을 바탕으로 해당 일자에 표시할 이벤트를 판정합니다.
          *
          * @param date 이벤트를 판정할 기준 일자
          * @param paydayDay 사용자 설정 급여일
+         * @param publicHolidays 해당 월의 공휴일 날짜 집합
          * @return 해당 일자에 적용되는 [DailyEventType] 목록
          */
-        fun resolve(date: LocalDate, paydayDay: PaydayDay): List<DailyEventType> {
+        fun resolve(
+            date: LocalDate,
+            paydayDay: PaydayDay,
+            publicHolidays: Set<LocalDate>,
+        ): List<DailyEventType> {
             val events = mutableListOf<DailyEventType>()
 
             if (paydayDay.isPayday(date)) {
                 events += PAYDAY
+            }
+            if (date in publicHolidays) {
+                events += PUBLIC_HOLIDAY
             }
 
             return events

@@ -11,6 +11,7 @@ class DailyEventTypeTest {
         val result = DailyEventType.resolve(
             date = LocalDate.of(2025, 6, 25),
             paydayDay = PaydayDay(25),
+            publicHolidays = emptySet(),
         )
 
         assertThat(result).containsExactly(DailyEventType.PAYDAY)
@@ -21,6 +22,7 @@ class DailyEventTypeTest {
         val result = DailyEventType.resolve(
             date = LocalDate.of(2025, 6, 24),
             paydayDay = PaydayDay(25),
+            publicHolidays = emptySet(),
         )
 
         assertThat(result).isEmpty()
@@ -31,6 +33,7 @@ class DailyEventTypeTest {
         val result = DailyEventType.resolve(
             date = LocalDate.of(2025, 2, 28),
             paydayDay = PaydayDay(31),
+            publicHolidays = emptySet(),
         )
 
         assertThat(result).containsExactly(DailyEventType.PAYDAY)
@@ -41,6 +44,7 @@ class DailyEventTypeTest {
         val result = DailyEventType.resolve(
             date = LocalDate.of(2025, 2, 27),
             paydayDay = PaydayDay(31),
+            publicHolidays = emptySet(),
         )
 
         assertThat(result).isEmpty()
@@ -51,8 +55,44 @@ class DailyEventTypeTest {
         val result = DailyEventType.resolve(
             date = LocalDate.of(2025, 5, 30),
             paydayDay = PaydayDay(31),
+            publicHolidays = emptySet(),
         )
 
         assertThat(result).containsExactly(DailyEventType.PAYDAY)
+    }
+
+    @Test
+    fun `공휴일이면 PUBLIC_HOLIDAY 이벤트를 반환한다`() {
+        val holiday = LocalDate.of(2025, 5, 5)
+        val result = DailyEventType.resolve(
+            date = holiday,
+            paydayDay = PaydayDay(25),
+            publicHolidays = setOf(holiday),
+        )
+
+        assertThat(result).containsExactly(DailyEventType.PUBLIC_HOLIDAY)
+    }
+
+    @Test
+    fun `급여일과 공휴일이 겹치면 두 이벤트 모두 반환한다`() {
+        val date = LocalDate.of(2025, 6, 25)
+        val result = DailyEventType.resolve(
+            date = date,
+            paydayDay = PaydayDay(25),
+            publicHolidays = setOf(date),
+        )
+
+        assertThat(result).containsExactly(DailyEventType.PAYDAY, DailyEventType.PUBLIC_HOLIDAY)
+    }
+
+    @Test
+    fun `공휴일이 아닌 날짜는 PUBLIC_HOLIDAY 이벤트를 반환하지 않는다`() {
+        val result = DailyEventType.resolve(
+            date = LocalDate.of(2025, 5, 6),
+            paydayDay = PaydayDay(25),
+            publicHolidays = setOf(LocalDate.of(2025, 5, 5)),
+        )
+
+        assertThat(result).isEmpty()
     }
 }

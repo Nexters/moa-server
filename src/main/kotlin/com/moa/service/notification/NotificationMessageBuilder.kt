@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.text.NumberFormat
+import java.time.LocalDate
 import java.util.*
 
 @Service
@@ -13,20 +14,28 @@ class NotificationMessageBuilder(
     private val notificationEarningsService: NotificationEarningsService,
 ) {
 
-    fun buildMessage(notification: NotificationLog): NotificationMessage {
+    fun buildMessage(
+        notification: NotificationLog,
+        publicHolidays: Set<LocalDate>,
+    ): NotificationMessage {
         val title = notification.notificationType.title
         val body = when (notification.notificationType) {
             NotificationType.CLOCK_IN -> notification.notificationType.body
-            NotificationType.CLOCK_OUT -> buildClockOutBody(notification)
+            NotificationType.CLOCK_OUT -> buildClockOutBody(notification, publicHolidays)
             NotificationType.PAYDAY -> notification.notificationType.body
+            NotificationType.PUBLIC_HOLIDAY -> notification.notificationType.body
         }
         return NotificationMessage(title, body, notification.notificationType)
     }
 
-    private fun buildClockOutBody(notification: NotificationLog): String {
+    private fun buildClockOutBody(
+        notification: NotificationLog,
+        publicHolidays: Set<LocalDate>,
+    ): String {
         val earnings = notificationEarningsService.calculateTodayEarnings(
             notification.memberId,
             notification.scheduledDate,
+            publicHolidays,
         )
         if (earnings == BigDecimal.ZERO) {
             return CLOCK_OUT_FALLBACK_BODY

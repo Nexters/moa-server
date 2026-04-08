@@ -70,6 +70,7 @@ class MemberEarningsService(
         type: DailyWorkScheduleType,
         clockInTime: LocalTime?,
         clockOutTime: LocalTime?,
+        publicHolidays: Set<LocalDate> = emptySet(),
     ): BigDecimal {
         if (type == DailyWorkScheduleType.NONE) return BigDecimal.ZERO
 
@@ -80,6 +81,7 @@ class MemberEarningsService(
             salaryType = payroll.salaryInputType,
             salaryAmount = payroll.salaryAmount,
             workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
+            publicHolidays = publicHolidays,
         )
         if (dailyRate == BigDecimal.ZERO) return dailyRate
 
@@ -104,6 +106,7 @@ class MemberEarningsService(
         policy: WorkPolicyVersion,
         start: LocalDate,
         endInclusive: LocalDate,
+        publicHolidays: Set<LocalDate> = emptySet(),
     ): Long {
         val standardDailyMinutes = compensationCalculator.calculateWorkMinutes(
             policy.clockInTime, policy.clockOutTime,
@@ -112,6 +115,7 @@ class MemberEarningsService(
             start = start,
             end = endInclusive.plusDays(1),
             workDays = policy.workdays.map { it.dayOfWeek }.toSet(),
+            publicHolidays = publicHolidays,
         )
         return standardDailyMinutes * standardWorkDaysCount
     }
