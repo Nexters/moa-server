@@ -23,30 +23,28 @@ class PaydayNotificationBatchService(
 
     @Transactional
     fun generateNotificationsForDate(date: LocalDate) {
-        if (isAlreadyGenerated(date)) return
-
         val profiles = findPaydayProfiles(date)
         if (profiles.isEmpty()) return
 
-        val memberIds = profiles.map { it.memberId }
+        val alreadyGeneratedMemberIds = notificationLogRepository
+            .findMemberIdsByScheduledDateAndNotificationType(date, NotificationType.PAYDAY)
+            .toSet()
+
+        val targetProfiles = profiles.filter { it.memberId !in alreadyGeneratedMemberIds }
+        if (targetProfiles.isEmpty()) return
+
+        val memberIds = targetProfiles.map { it.memberId }
         val requiredTermCodes = notificationEligibilityService.findRequiredTermCodes()
         val context = notificationEligibilityService.loadContext(memberIds)
 
         log.info("Generating payday notifications for {} members on {}", memberIds.size, date)
 
-        val notifications = profiles.mapNotNull { profile ->
+        val notifications = targetProfiles.mapNotNull { profile ->
             createNotificationIfEligible(profile.memberId, date, requiredTermCodes, context)
         }
 
         notificationLogRepository.saveAll(notifications)
         log.info("Created {} payday notification logs for {}", notifications.size, date)
-    }
-
-    private fun isAlreadyGenerated(date: LocalDate): Boolean {
-        val exists = notificationLogRepository
-            .existsByScheduledDateAndNotificationType(date, NotificationType.PAYDAY)
-        if (exists) log.info("Payday notifications already generated for date: {}", date)
-        return exists
     }
 
     private fun findPaydayProfiles(date: LocalDate): List<Profile> {

@@ -1,7 +1,7 @@
 package com.moa.service.notification
 
-import com.moa.entity.Workday
 import com.moa.entity.WorkPolicyVersion
+import com.moa.entity.Workday
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationSettingType
 import com.moa.entity.notification.NotificationType
@@ -30,8 +30,6 @@ class NotificationBatchService(
 
     @Transactional
     fun generateNotificationsForDate(date: LocalDate) {
-        if (isAlreadyGenerated(date)) return
-
         if (publicHolidayService.isHoliday(date)) {
             generateHolidayNotifications(date)
         } else {
@@ -43,13 +41,20 @@ class NotificationBatchService(
         val allPolicies = workPolicyVersionRepository.findLatestEffectivePoliciesPerMember(date)
         if (allPolicies.isEmpty()) return
 
-        val memberIds = allPolicies.map { it.memberId }
+        val alreadyGeneratedMemberIds = notificationLogRepository
+            .findMemberIdsByScheduledDateAndNotificationType(date, NotificationType.PUBLIC_HOLIDAY)
+            .toSet()
+
+        val targetPolicies = allPolicies.filter { it.memberId !in alreadyGeneratedMemberIds }
+        if (targetPolicies.isEmpty()) return
+
+        val memberIds = targetPolicies.map { it.memberId }
         val requiredTermCodes = notificationEligibilityService.findRequiredTermCodes()
         val context = notificationEligibilityService.loadContext(memberIds, date)
 
         log.info("Generating public holiday notifications for {} members on {}", memberIds.size, date)
 
-        val notifications = allPolicies.mapNotNull { policy ->
+        val notifications = targetPolicies.mapNotNull { policy ->
             createHolidayNotificationIfEligible(policy.memberId, date, requiredTermCodes, context)
         }
 
@@ -74,27 +79,25 @@ class NotificationBatchService(
         val workdayPolicies = findWorkdayPolicies(date)
         if (workdayPolicies.isEmpty()) return
 
-        val memberIds = workdayPolicies.map { it.memberId }
+        val alreadyGeneratedMemberIds = notificationLogRepository
+            .findMemberIdsByScheduledDateAndNotificationType(date, NotificationType.CLOCK_IN)
+            .toSet()
+
+        val targetPolicies = workdayPolicies.filter { it.memberId !in alreadyGeneratedMemberIds }
+        if (targetPolicies.isEmpty()) return
+
+        val memberIds = targetPolicies.map { it.memberId }
         val requiredTermCodes = notificationEligibilityService.findRequiredTermCodes()
         val context = notificationEligibilityService.loadContext(memberIds, date)
 
         log.info("Generating notifications for {} members on {}", memberIds.size, date)
 
-        val notifications = workdayPolicies.mapNotNull { policy ->
+        val notifications = targetPolicies.mapNotNull { policy ->
             createNotificationsIfEligible(policy, date, requiredTermCodes, context)
         }.flatten()
 
         notificationLogRepository.saveAll(notifications)
         log.info("Created {} notification logs for {}", notifications.size, date)
-    }
-
-    private fun isAlreadyGenerated(date: LocalDate): Boolean {
-        val exists = notificationLogRepository
-            .existsByScheduledDateAndNotificationType(date, NotificationType.CLOCK_IN)
-            || notificationLogRepository
-            .existsByScheduledDateAndNotificationType(date, NotificationType.PUBLIC_HOLIDAY)
-        if (exists) log.info("Notifications already generated for date: {}", date)
-        return exists
     }
 
     private fun findWorkdayPolicies(date: LocalDate): List<WorkPolicyVersion> {

@@ -4,6 +4,7 @@ import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationStatus
 import com.moa.entity.notification.NotificationType
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -33,14 +34,13 @@ interface NotificationLogRepository : JpaRepository<NotificationLog, Long> {
         notificationTypes: Collection<NotificationType>,
     ): List<NotificationLog>
 
-    fun existsByMemberIdAndScheduledDateAndStatus(
-        memberId: Long,
-        scheduledDate: LocalDate,
-        status: NotificationStatus,
-    ): Boolean
-
-    fun existsByScheduledDateAndNotificationType(
+    @Query(
+        "select n.memberId " +
+                "from NotificationLog n " +
+                "where n.scheduledDate = :scheduledDate and n.notificationType = :notificationType"
+    )
+    fun findMemberIdsByScheduledDateAndNotificationType(
         scheduledDate: LocalDate,
         notificationType: NotificationType,
-    ): Boolean
+    ): List<Long>
 }
