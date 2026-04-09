@@ -36,7 +36,6 @@ class WorkdayController(
         workdayService.getMonthlySchedules(member.id, year, month)
     )
 
-    @Deprecated("Use GET /api/v1/calendar instead")
     @GetMapping("/{date}")
     fun getSchedule(
         @Auth member: AuthMemberInfo,
