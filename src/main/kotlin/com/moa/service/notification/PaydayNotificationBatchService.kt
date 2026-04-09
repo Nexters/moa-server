@@ -26,8 +26,9 @@ class PaydayNotificationBatchService(
         val profiles = findPaydayProfiles(date)
         if (profiles.isEmpty()) return
 
+        val profileMemberIds = profiles.map { it.memberId }
         val alreadyGeneratedMemberIds = notificationLogRepository
-            .findMemberIdsByScheduledDateAndNotificationType(date, NotificationType.PAYDAY)
+            .findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(date, NotificationType.PAYDAY, profileMemberIds)
             .toSet()
 
         val targetProfiles = profiles.filter { it.memberId !in alreadyGeneratedMemberIds }

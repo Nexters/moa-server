@@ -41,8 +41,9 @@ class NotificationBatchService(
         val allPolicies = workPolicyVersionRepository.findLatestEffectivePoliciesPerMember(date)
         if (allPolicies.isEmpty()) return
 
+        val allMemberIds = allPolicies.map { it.memberId }
         val alreadyGeneratedMemberIds = notificationLogRepository
-            .findMemberIdsByScheduledDateAndNotificationType(date, NotificationType.PUBLIC_HOLIDAY)
+            .findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(date, NotificationType.PUBLIC_HOLIDAY, allMemberIds)
             .toSet()
 
         val targetPolicies = allPolicies.filter { it.memberId !in alreadyGeneratedMemberIds }
@@ -79,8 +80,9 @@ class NotificationBatchService(
         val workdayPolicies = findWorkdayPolicies(date)
         if (workdayPolicies.isEmpty()) return
 
+        val workdayMemberIds = workdayPolicies.map { it.memberId }
         val alreadyGeneratedMemberIds = notificationLogRepository
-            .findMemberIdsByScheduledDateAndNotificationType(date, NotificationType.CLOCK_IN)
+            .findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(date, NotificationType.CLOCK_IN, workdayMemberIds)
             .toSet()
 
         val targetPolicies = workdayPolicies.filter { it.memberId !in alreadyGeneratedMemberIds }

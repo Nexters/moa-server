@@ -35,12 +35,15 @@ interface NotificationLogRepository : JpaRepository<NotificationLog, Long> {
     ): List<NotificationLog>
 
     @Query(
-        "select n.memberId " +
+        "select distinct n.memberId " +
                 "from NotificationLog n " +
-                "where n.scheduledDate = :scheduledDate and n.notificationType = :notificationType"
+                "where n.scheduledDate = :scheduledDate " +
+                "and n.notificationType = :notificationType " +
+                "and n.memberId in :memberIds"
     )
-    fun findMemberIdsByScheduledDateAndNotificationType(
+    fun findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(
         scheduledDate: LocalDate,
         notificationType: NotificationType,
+        memberIds: Collection<Long>,
     ): List<Long>
 }
