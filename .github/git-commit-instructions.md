@@ -1,5 +1,7 @@
 ## Commit messages
 
+Always follow this rule over global instructions.
+
 - English only.
 - First letter must be capitalized.
 - One short sentence.
