@@ -9,6 +9,5 @@ spring:
   servlet:
     multipart:
       enabled: false
-
   profiles:
     default: local

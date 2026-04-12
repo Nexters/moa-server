@@ -1,4 +1,12 @@
 spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:core;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
   jpa:
     hibernate:
       ddl-auto: update
@@ -6,15 +14,6 @@ spring:
       hibernate:
         format_sql: true
     defer-datasource-initialization: true
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-
-  datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:core;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    username: sa
 
 jwt:
   secret-key: ${secret.jwt.local.access.secret-key}
