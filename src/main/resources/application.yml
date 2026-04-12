@@ -6,6 +6,9 @@ spring:
       - moa-secret/db.yml
       - moa-secret/admin.yml
       - moa-secret/discord.yml
+  servlet:
+    multipart:
+      enabled: false
 
   profiles:
     default: local
