@@ -1,5 +1,6 @@
 package com.moa.service.notification
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -13,7 +14,12 @@ class NotificationBatchScheduler(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @Scheduled(cron = "0 20 0 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Seoul")
+    @SchedulerLock(
+        name = "createDailyNotifications",
+        lockAtMostFor = "2m",
+        lockAtLeastFor = "1m",
+    )
     fun createDailyNotifications() {
         log.info("{} : 출퇴근 알림 전송 배치 실행", LocalDateTime.now())
         val today = LocalDate.now(ZoneId.of("Asia/Seoul"))
