@@ -45,6 +45,10 @@ dependencies {
     implementation("com.google.firebase:firebase-admin:9.4.3")
     implementation("com.github.napstr:logback-discord-appender:1.0.0")
 
+    // scheduler
+    implementation("net.javacrumbs.shedlock:shedlock-spring:5.16.0")
+    implementation("net.javacrumbs.shedlock:shedlock-provider-jdbc-template:5.16.0")
+
     // test
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
