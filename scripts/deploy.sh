@@ -14,7 +14,7 @@ STATE_FILE="${APP_DIR}/active-color"
 DEPLOY_HISTORY="${APP_DIR}/deploy-history"
 NGINX_UPSTREAM_CONF="/etc/nginx/conf.d/moa-upstream.conf"
 LOCK_FILE="${APP_DIR}/deploy.lock"
-SMOKE_TEST_HOST="moa-official.kr"
+SMOKE_TEST_HOST=${SMOKE_TEST_HOST:-"moa-official.kr"}
 HEALTH_CHECK_MAX_RETRY=30
 HEALTH_CHECK_INTERVAL=2
 
