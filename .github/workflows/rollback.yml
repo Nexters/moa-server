@@ -1,0 +1,46 @@
+name: Manual Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker_tag:
+        description: 'Rollback할 Docker 태그 (git SHA). 비우면 직전 성공 버전으로 롤백'
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on:
+      - self-hosted
+
+    steps:
+      - name: Checkout deploy scripts
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            scripts
+
+      - name: Log in to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKER_PASSWORD }}" | sudo docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Execute Rollback
+        env:
+          DOCKER_IMAGE: godqhr721/moa_server
+        run: |
+          chmod +x scripts/rollback.sh scripts/deploy.sh
+          sudo -E bash scripts/rollback.sh "${{ github.event.inputs.docker_tag }}"
+
+      - name: Verify rollback
+        run: |
+          echo "=== Rollback Status ==="
+          echo "Active color: $(cat /home/ubuntu/app/active-color)"
+          echo "Last 5 deployments:"
+          tail -5 /home/ubuntu/app/deploy-history
