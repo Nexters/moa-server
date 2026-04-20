@@ -11,3 +11,7 @@ spring:
       enabled: false
   profiles:
     default: local
+
+app:
+  version: ${APP_VERSION:dev}
+  deploy-color: ${DEPLOY_COLOR:local}
