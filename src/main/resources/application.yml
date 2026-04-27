@@ -12,6 +12,15 @@ spring:
   profiles:
     default: local
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
 app:
   version: ${APP_VERSION:dev}
   deploy-color: ${DEPLOY_COLOR:local}
