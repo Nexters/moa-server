@@ -25,7 +25,7 @@ RUN mkdir -p /app/logs && chown -R appuser:appgroup /app
 
 USER appuser
 
-EXPOSE 8080 8090 8091
+EXPOSE 8080
 
 ENTRYPOINT ["java", \
     "-Duser.timezone=Asia/Seoul", \

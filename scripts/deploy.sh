@@ -80,7 +80,7 @@ sudo docker run \
 # ============================================================
 # Step 4: Health Check (최대 60초 대기)
 # ============================================================
-echo "[Step 4] Waiting for health check on port ${NEXT_PORT}..."
+echo "[Step 4] Waiting for health check on management port ${NEXT_MGMT_PORT} (app port: ${NEXT_PORT})..."
 
 for i in $(seq 1 ${HEALTH_CHECK_MAX_RETRY}); do
     HEALTH=$(curl -sf "http://localhost:${NEXT_MGMT_PORT}/actuator/health" 2>/dev/null || true)
