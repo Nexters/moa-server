@@ -31,15 +31,13 @@ fi
 # Step 1: 현재 활성 컬러 확인
 # ============================================================
 if [ -f "$STATE_FILE" ] && [ "$(cat "$STATE_FILE")" = "blue" ]; then
-    CURRENT="blue"
-    NEXT="green"
-    CURRENT_PORT=8080
-    NEXT_PORT=8081
+    CURRENT="blue"; NEXT="green"
+    CURRENT_PORT=8080; NEXT_PORT=8081
+    CURRENT_MGMT_PORT=8090; NEXT_MGMT_PORT=8091
 else
-    CURRENT="green"
-    NEXT="blue"
-    CURRENT_PORT=8081
-    NEXT_PORT=8080
+    CURRENT="green"; NEXT="blue"
+    CURRENT_PORT=8081; NEXT_PORT=8080
+    CURRENT_MGMT_PORT=8091; NEXT_MGMT_PORT=8090
 fi
 
 echo "========================================"
@@ -72,18 +70,20 @@ sudo docker run \
     --add-host host.docker.internal:host-gateway \
     --restart unless-stopped \
     -p "${NEXT_PORT}:8080" \
+    -p "127.0.0.1:${NEXT_MGMT_PORT}:${NEXT_MGMT_PORT}" \
     -e SPRING_PROFILES_ACTIVE=prod \
     -e DEPLOY_COLOR="${NEXT}" \
     -e APP_VERSION="${DOCKER_TAG}" \
+    -e MANAGEMENT_PORT="${NEXT_MGMT_PORT}" \
     -d "${IMAGE}"
 
 # ============================================================
 # Step 4: Health Check (최대 60초 대기)
 # ============================================================
-echo "[Step 4] Waiting for health check on port ${NEXT_PORT}..."
+echo "[Step 4] Waiting for health check on management port ${NEXT_MGMT_PORT} (app port: ${NEXT_PORT})..."
 
 for i in $(seq 1 ${HEALTH_CHECK_MAX_RETRY}); do
-    HEALTH=$(curl -sf "http://localhost:${NEXT_PORT}/actuator/health" 2>/dev/null || true)
+    HEALTH=$(curl -sf "http://localhost:${NEXT_MGMT_PORT}/actuator/health" 2>/dev/null || true)
 
     if echo "${HEALTH}" | grep -q '"status":"UP"'; then
         echo "[Step 4] Health check PASSED (attempt ${i}/${HEALTH_CHECK_MAX_RETRY})"

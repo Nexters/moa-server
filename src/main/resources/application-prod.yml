@@ -15,13 +15,19 @@ server:
   shutdown: graceful
 
 management:
+  server:
+    port: ${MANAGEMENT_PORT:8090}
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,info,prometheus
   endpoint:
     health:
-      show-details: never
+      show-details: always
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
 
 jwt:
   secret-key: ${secret.jwt.prod.access.secret-key}
