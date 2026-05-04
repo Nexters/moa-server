@@ -4,8 +4,8 @@ import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationStatus
 import com.moa.entity.notification.NotificationType
 import com.moa.repository.NotificationLogRepository
-import io.mockk.mockk
 import io.micrometer.core.instrument.MeterRegistry
+import io.mockk.mockk
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -13,27 +13,15 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.boot.test.web.server.LocalServerPort
+import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
-import org.springframework.context.annotation.Primary
 import org.springframework.web.client.RestClient
 import java.time.LocalDate
 import java.time.LocalTime
 
 /**
  * End-to-End 테스트.
- *
- * 통합 테스트(`NotificationDispatchIntegrationTest`)와의 차이:
- * - 통합: `MeterRegistry` 객체를 직접 주입받아 메트릭 값을 in-process로 단언.
- * - E2E: 실제 HTTP 서버(Random Port)를 띄우고 `RestClient`로 `/actuator/prometheus`
- *   를 호출해 **응답 본문 텍스트**를 검증. 운영에서 Grafana Alloy가 scrape하는 그대로의
- *   계약(노출 형식 + Prometheus exposition format + 라벨 직렬화)을 회귀로 잠근다.
- *
- * 즉, 단위→통합→E2E 로 갈수록:
- *   - 격리도는 낮아지고
- *   - 시스템 경계까지 검증 범위가 늘어나고
- *   - 실행 비용은 커진다.
- * 그래서 **단위는 분기마다, 통합은 핵심 흐름당 1개, E2E는 외부 계약당 1개**가 일반적인 비율.
  *
  * NotificationDispatchScheduler 빈을 mock으로 교체한 이유:
  *   `@SpringBootTest`는 컴포넌트 스캔을 모두 수행해서 Scheduler가 cron으로 살아있다.
@@ -47,6 +35,7 @@ import java.time.LocalTime
         "management.endpoints.web.exposure.include=health,info,metrics,prometheus",
         "management.endpoints.access.default=read_only",
         "management.prometheus.metrics.export.enabled=true",
+        "spring.main.allow-bean-definition-overriding=true",
     ],
 )
 @Import(PrometheusEndpointE2eTest.NoopSchedulerConfig::class)
@@ -55,6 +44,8 @@ class PrometheusEndpointE2eTest @Autowired constructor(
     private val notificationDispatchService: NotificationDispatchService,
     private val notificationLogRepository: NotificationLogRepository,
     private val meterRegistry: MeterRegistry,
+    private val applicationContext: ApplicationContext,
+    private val dispatchScheduler: NotificationDispatchScheduler,
 ) {
 
     private val httpClient = RestClient.create()
@@ -63,6 +54,18 @@ class PrometheusEndpointE2eTest @Autowired constructor(
     fun cleanup() {
         notificationLogRepository.deleteAll()
         meterRegistry.clear()
+    }
+
+    @Test
+    fun `Scheduler 빈이 진짜로 mock으로 교체됐는지 — bean override 검증`() {
+        val schedulerBeans = applicationContext.getBeansOfType(NotificationDispatchScheduler::class.java)
+        assertThat(schedulerBeans).hasSize(1)
+        assertThat(schedulerBeans.keys).containsExactly("notificationDispatchScheduler")
+
+        dispatchScheduler.dispatchPendingNotifications()
+        assertThat(meterRegistry.find("moa.notification.dispatch").timer())
+            .`as`("mock scheduler 호출은 production processNotifications 를 안 부르므로 Timer 등록도 안 됨")
+            .isNull()
     }
 
     @Test
@@ -101,8 +104,8 @@ class PrometheusEndpointE2eTest @Autowired constructor(
         //    common tag가 붙어있어 가짜 통과 가능. 비즈니스 라인만 추출해 그 라인이 모두
         //    common tag를 가지는지(`allSatisfy`) 확인해야 customizer 회귀를 잡을 수 있다.
         val notificationMetricLines = metricLines(body, "moa_notification_dispatch_attempts_total") +
-            metricLines(body, "moa_notification_dispatch_failed_total") +
-            metricLines(body, "moa_notification_dispatch_seconds")
+                metricLines(body, "moa_notification_dispatch_failed_total") +
+                metricLines(body, "moa_notification_dispatch_seconds")
         assertThat(notificationMetricLines).isNotEmpty
         assertThat(notificationMetricLines).allSatisfy { line ->
             assertThat(line).contains("application=\"moa\"")
@@ -118,14 +121,23 @@ class PrometheusEndpointE2eTest @Autowired constructor(
             .toList()
 
     /**
-     * NotificationDispatchScheduler를 noop mock으로 교체하는 테스트 컨피그.
-     * Scheduler 빈은 살아있되 cron이 호출하는 메서드가 무력화되어, 본 테스트의
-     * 명시 호출만 Timer/Counter에 반영된다.
+     * NotificationDispatchScheduler 빈을 noop mock으로 *교체*(override) 한다.
+     *
+     * 중요: `@Bean` 의 *name* 을 component-scanned 빈과 *동일하게*
+     * (`notificationDispatchScheduler`) 지정해야 진짜 교체가 일어난다.
+     *
+     * 다른 이름으로 정의하고 `@Primary` 만 붙이면 두 빈이 *공존* 하고,
+     * component-scanned 빈이 그대로 살아있어 `@Scheduled` cron이 여전히
+     * 등록된다 — Spring 의 `ScheduledAnnotationBeanPostProcessor` 는
+     * 컨텍스트 안의 *모든* 빈을 스캔하기 때문이고, `@Primary` 는
+     * *주입 우선순위* 만 결정할 뿐 빈 등록 자체에 개입하지 않는다.
+     *
+     * `spring.main.allow-bean-definition-overriding=true` 가 properties 에
+     * 활성화돼야 같은 이름의 빈 재정의가 허용된다.
      */
     @TestConfiguration
     class NoopSchedulerConfig {
-        @Bean
-        @Primary
+        @Bean("notificationDispatchScheduler")
         fun noopDispatchScheduler(): NotificationDispatchScheduler =
             mockk(relaxed = true)
     }
