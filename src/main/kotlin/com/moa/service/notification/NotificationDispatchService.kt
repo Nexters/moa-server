@@ -27,8 +27,8 @@ class NotificationDispatchService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    private fun pendingCounter(type: String): Counter = Counter.builder(METRIC_PENDING)
-        .description("발송 시도된 알림 수")
+    private fun attemptsCounter(type: String): Counter = Counter.builder(METRIC_ATTEMPTS)
+        .description("디스패치 시도된 알림의 누적 수 (이전에 PENDING 상태였던 행을 처리할 때마다 증가)")
         .tag("notification_type", type)
         .register(meterRegistry)
 
@@ -38,7 +38,7 @@ class NotificationDispatchService(
         .tag("reason", reason)
         .register(meterRegistry)
 
-    @Timed(value = "moa.notification.dispatch", percentiles = [0.5, 0.95, 0.99])
+    @Timed(value = "moa.notification.dispatch", histogram = true)
     fun processNotifications(date: LocalDate, currentTime: LocalTime) {
         val pendingLogs = notificationLogRepository
             .findAllByScheduledDateAndScheduledTimeLessThanEqualAndStatus(
@@ -50,7 +50,7 @@ class NotificationDispatchService(
 
         log.info("Dispatching {} pending notifications", pendingLogs.size)
         pendingLogs.groupingBy { it.notificationType.name }.eachCount()
-            .forEach { (type, n) -> pendingCounter(type).increment(n.toDouble()) }
+            .forEach { (type, n) -> attemptsCounter(type).increment(n.toDouble()) }
 
         val memberIds = pendingLogs.map { it.memberId }.distinct()
         val tokensByMemberId = fcmTokenRepository.findAllByMemberIdIn(memberIds)
@@ -103,7 +103,7 @@ class NotificationDispatchService(
     }
 
     companion object {
-        private const val METRIC_PENDING = "moa.notification.dispatch.pending"
+        private const val METRIC_ATTEMPTS = "moa.notification.dispatch.attempts"
         private const val METRIC_FAILED = "moa.notification.dispatch.failed"
         private const val REASON_NO_TOKEN = "no_token"
         private const val REASON_BUILD = "build"

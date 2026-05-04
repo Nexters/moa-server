@@ -89,12 +89,12 @@ class NotificationDispatchServiceMetricsTest {
 
         sut.processNotifications(TODAY, NOON)
 
-        val pending = registry.find("moa.notification.dispatch.pending")
+        val attempts = registry.find("moa.notification.dispatch.attempts")
             .tag("notification_type", "CLOCK_IN").counter()
         val failed = registry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "CLOCK_IN").tag("reason", "no_token").counter()
 
-        assertThat(pending?.count()).isEqualTo(1.0)
+        assertThat(attempts?.count()).isEqualTo(1.0)
         assertThat(failed?.count()).isEqualTo(1.0)
     }
 

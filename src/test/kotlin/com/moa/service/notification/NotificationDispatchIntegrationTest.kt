@@ -49,18 +49,37 @@ class NotificationDispatchIntegrationTest @Autowired constructor(
 
         notificationDispatchService.processNotifications(TODAY, NOON)
 
-        val pending = meterRegistry.find("moa.notification.dispatch.pending")
+        val attempts = meterRegistry.find("moa.notification.dispatch.attempts")
             .tag("notification_type", "CLOCK_IN").counter()
         val failed = meterRegistry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "CLOCK_IN").tag("reason", "no_token").counter()
 
-        assertThat(pending?.count()).isEqualTo(1.0)
+        assertThat(attempts?.count()).isEqualTo(1.0)
         assertThat(failed?.count()).isEqualTo(1.0)
 
         // common tag 부착 검증 — `MetricsConfig`의 `MeterRegistryCustomizer`가
         // 모든 신규 메트릭에 application/deploy_color/app_version 을 자동으로 붙이는지 확인.
-        val tagKeys = pending?.id?.tags?.map { it.key }.orEmpty()
-        assertThat(tagKeys).contains("application", "deploy_color", "app_version", "notification_type")
+        //
+        // 키 존재만으론 부족하다 — `app_version=""` 처럼 *값이 비어있는* 회귀를 못 잡는다.
+        // 값까지 검증 + 두 메트릭 간 공통 태그 일관성까지 비교해서 customizer가 *부분만*
+        // 적용되는 깨진 상태를 잡는다.
+        val attemptsTags = attempts?.id?.tags.orEmpty().associate { it.key to it.value }
+        val failedTags = failed?.id?.tags.orEmpty().associate { it.key to it.value }
+
+        // 분기 태그 — 비즈니스 코드가 직접 붙인 태그가 정확히 흘러갔는지
+        assertThat(attemptsTags["notification_type"]).isEqualTo("CLOCK_IN")
+        assertThat(failedTags["notification_type"]).isEqualTo("CLOCK_IN")
+        assertThat(failedTags["reason"]).isEqualTo("no_token")
+
+        // common tag — 값이 비어있지 않은지
+        assertThat(attemptsTags["application"]).isNotNull().isNotBlank()
+        assertThat(attemptsTags["deploy_color"]).isNotNull().isNotBlank()
+        assertThat(attemptsTags["app_version"]).isNotNull().isNotBlank()
+
+        // common tag 일관성 — customizer가 두 메트릭에 *같은 값*을 붙였는지
+        assertThat(failedTags["application"]).isEqualTo(attemptsTags["application"])
+        assertThat(failedTags["deploy_color"]).isEqualTo(attemptsTags["deploy_color"])
+        assertThat(failedTags["app_version"]).isEqualTo(attemptsTags["app_version"])
     }
 
     companion object {
