@@ -156,7 +156,7 @@ class WorkdayService(
     ): WorkdayResponse {
         val saved = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
         val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
-        val publicHolidays = if (publicHolidayService.isHoliday(date)) setOf(date) else emptySet()
+        val publicHolidays = publicHolidayService.getHolidayDatesForMonth(date.year,date.monthValue)
         val schedule = resolveSchedule(saved, policy, date, publicHolidays)
         return createWorkdayResponse(memberId, date, schedule, policy, resolvePaydayDay(memberId), publicHolidays)
     }
