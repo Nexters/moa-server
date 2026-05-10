@@ -7,6 +7,7 @@ import com.moa.entity.notification.NotificationSettingType
 import com.moa.entity.notification.NotificationType
 import com.moa.repository.NotificationLogRepository
 import com.moa.repository.ProfileRepository
+import com.moa.service.PublicHolidayService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -18,6 +19,7 @@ class PaydayNotificationBatchService(
     private val profileRepository: ProfileRepository,
     private val notificationLogRepository: NotificationLogRepository,
     private val notificationEligibilityService: NotificationEligibilityService,
+    private val publicHolidayService: PublicHolidayService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -49,7 +51,8 @@ class PaydayNotificationBatchService(
     }
 
     private fun findPaydayProfiles(date: LocalDate): List<Profile> {
-        val candidatePaydayDays = PaydayDay.resolvingTo(date)
+        val publicHolidays = publicHolidayService.getHolidayDatesForPaydayResolution(date)
+        val candidatePaydayDays = PaydayDay.resolvingTo(date, publicHolidays)
             .map { it.value }
 
         if (candidatePaydayDays.isEmpty()) {

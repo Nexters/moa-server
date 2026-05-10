@@ -22,6 +22,16 @@ class PublicHolidayService(
     }
 
     @Transactional(readOnly = true)
+    fun getHolidayDatesForPaydayResolution(date: LocalDate): Set<LocalDate> {
+        val start = date.withDayOfMonth(1)
+        val nextMonth = start.plusMonths(1)
+        val end = nextMonth.withDayOfMonth(nextMonth.lengthOfMonth())
+        return publicHolidayRepository.findAllByDateBetween(start, end)
+            .map { it.date }
+            .toSet()
+    }
+
+    @Transactional(readOnly = true)
     fun isHoliday(date: LocalDate): Boolean =
         publicHolidayRepository.existsByDate(date)
 
