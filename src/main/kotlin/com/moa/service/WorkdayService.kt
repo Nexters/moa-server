@@ -41,7 +41,7 @@ class WorkdayService(
 
         val monthlyPolicy = resolveMonthlyRepresentativePolicyOrNull(memberId, year, month)
         val paydayDay = resolvePaydayDay(memberId)
-        val publicHolidays = publicHolidayService.getHolidayDatesForMonth(year, month)
+        val publicHolidays = publicHolidayService.getHolidayDatesForPaydayResolution(start)
 
         return generateSequence(start) { it.plusDays(1) }
             .takeWhile { !it.isAfter(end) }
@@ -156,7 +156,7 @@ class WorkdayService(
     ): WorkdayResponse {
         val saved = dailyWorkScheduleRepository.findByMemberIdAndDate(memberId, date)
         val policy = resolveMonthlyRepresentativePolicyOrNull(memberId, date.year, date.monthValue)
-        val publicHolidays = publicHolidayService.getHolidayDatesForMonth(date.year,date.monthValue)
+        val publicHolidays = publicHolidayService.getHolidayDatesForPaydayResolution(date)
         val schedule = resolveSchedule(saved, policy, date, publicHolidays)
         return createWorkdayResponse(memberId, date, schedule, policy, resolvePaydayDay(memberId), publicHolidays)
     }
@@ -201,7 +201,7 @@ class WorkdayService(
         )
 
         val schedule = ResolvedSchedule(savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime)
-        val publicHolidays = if (publicHolidayService.isHoliday(date)) setOf(date) else emptySet()
+        val publicHolidays = publicHolidayService.getHolidayDatesForPaydayResolution(date)
         return createWorkdayResponse(
             memberId,
             date,
@@ -242,7 +242,7 @@ class WorkdayService(
         )
 
         val schedule = ResolvedSchedule(savedSchedule.type, savedSchedule.clockInTime, savedSchedule.clockOutTime)
-        val publicHolidays = if (publicHolidayService.isHoliday(date)) setOf(date) else emptySet()
+        val publicHolidays = publicHolidayService.getHolidayDatesForPaydayResolution(date)
         return createWorkdayResponse(
             memberId,
             date,

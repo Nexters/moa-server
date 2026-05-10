@@ -62,6 +62,18 @@ class DailyEventTypeTest {
     }
 
     @Test
+    fun `설정한 급여일이 공휴일이면 직전 영업일을 급여일로 간주한다`() {
+        val holiday = LocalDate.of(2025, 6, 25)
+        val result = DailyEventType.resolve(
+            date = LocalDate.of(2025, 6, 24),
+            paydayDay = PaydayDay(25),
+            publicHolidays = setOf(holiday),
+        )
+
+        assertThat(result).containsExactly(DailyEventType.PAYDAY)
+    }
+
+    @Test
     fun `공휴일이면 PUBLIC_HOLIDAY 이벤트를 반환한다`() {
         val holiday = LocalDate.of(2025, 5, 5)
         val result = DailyEventType.resolve(
@@ -74,7 +86,7 @@ class DailyEventTypeTest {
     }
 
     @Test
-    fun `급여일과 공휴일이 겹치면 두 이벤트 모두 반환한다`() {
+    fun `설정한 급여일이 공휴일이면 해당 날짜는 공휴일 이벤트만 반환한다`() {
         val date = LocalDate.of(2025, 6, 25)
         val result = DailyEventType.resolve(
             date = date,
@@ -82,7 +94,7 @@ class DailyEventTypeTest {
             publicHolidays = setOf(date),
         )
 
-        assertThat(result).containsExactly(DailyEventType.PAYDAY, DailyEventType.PUBLIC_HOLIDAY)
+        assertThat(result).containsExactly(DailyEventType.PUBLIC_HOLIDAY)
     }
 
     @Test

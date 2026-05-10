@@ -28,7 +28,7 @@ enum class DailyEventType {
         ): List<DailyEventType> {
             val events = mutableListOf<DailyEventType>()
 
-            if (paydayDay.isPayday(date)) {
+            if (paydayDay.isPayday(date, publicHolidays)) {
                 events += PAYDAY
             }
             if (date in publicHolidays) {
