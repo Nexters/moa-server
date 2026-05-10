@@ -18,7 +18,8 @@ enum class DailyEventType {
          *
          * @param date 이벤트를 판정할 기준 일자
          * @param paydayDay 사용자 설정 급여일
-         * @param publicHolidays 해당 월의 공휴일 날짜 집합
+         * @param publicHolidays 급여일 보정과 공휴일 이벤트 판정에 필요한 공휴일 날짜 집합.
+         * date가 속한 달과 다음 달의 공휴일을 포함해야 합니다.
          * @return 해당 일자에 적용되는 [DailyEventType] 목록
          */
         fun resolve(

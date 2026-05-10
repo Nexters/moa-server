@@ -29,7 +29,7 @@ data class PaydayDay(
      *
      * @param year 급여일을 계산할 연도
      * @param month 급여일을 계산할 월
-     * @param publicHolidays 공휴일 날짜 집합
+     * @param publicHolidays 해당 연월의 급여일 보정에 사용할 공휴일 날짜 집합
      * @return 실제 적용되는 급여일
      */
     fun resolveEffectiveDate(
@@ -51,7 +51,8 @@ data class PaydayDay(
      * 특정 날짜가 이 급여일 설정의 실제 급여일인지 판정합니다.
      *
      * @param date 판정할 날짜
-     * @param publicHolidays 공휴일 날짜 집합
+     * @param publicHolidays 급여일 보정에 필요한 공휴일 날짜 집합.
+     * date가 속한 달과 다음 달의 공휴일을 포함해야 합니다.
      * @return 해당 날짜가 실제 급여일이면 `true`
      */
     fun isPayday(
@@ -71,7 +72,8 @@ data class PaydayDay(
          * 특정 날짜에 실제 급여일로 귀결되는 모든 급여일 설정 값을 반환합니다.
          *
          * @param date 기준 날짜
-         * @param publicHolidays 공휴일 날짜 집합
+         * @param publicHolidays 급여일 보정에 필요한 공휴일 날짜 집합.
+         * date가 속한 달과 다음 달의 공휴일을 포함해야 합니다.
          * @return 해당 날짜를 실제 급여일로 가지는 [PaydayDay] 집합
          */
         fun resolvingTo(
