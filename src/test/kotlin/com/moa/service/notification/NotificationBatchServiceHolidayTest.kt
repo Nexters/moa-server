@@ -28,7 +28,8 @@ import java.time.LocalTime
 /**
  * 공휴일 정책 박제 테스트.
  *
- * - 정책: 공휴일에는 어떤 푸시 알림도 생성하지 않는다 (이전에는 PUBLIC_HOLIDAY 알림을 보냈음)
+ * - 정책: 자동 배치는 생성 기준일(date)이 공휴일이면 푸시 알림 로그를 생성하지 않는다.
+ * - 비공휴일 근무에서 발생한 야간 근무자의 익일 CLOCK_OUT 알림은 scheduledDate가 공휴일이어도 생성한다.
  * - `NotificationBatchService.generateNotificationsForDate` 의 holiday 가드 동작을 검증
  */
 class NotificationBatchServiceHolidayTest {
@@ -116,7 +117,7 @@ class NotificationBatchServiceHolidayTest {
     }
 
     @Test
-    fun `공휴일에는 적격한 회원이 있어도 어떠한 알림도 생성되지 않는다`() {
+    fun `생성 기준일이 공휴일이면 적격한 회원이 있어도 알림이 생성되지 않는다`() {
         공휴일로_지정(신정)
         회원_등록(id = 1L)
 
@@ -126,7 +127,7 @@ class NotificationBatchServiceHolidayTest {
     }
 
     @Test
-    fun `공휴일에는 정책상 근무 요일이어도 출퇴근 알림이 생성되지 않는다`() {
+    fun `생성 기준일이 공휴일이면 정책상 근무 요일이어도 출퇴근 알림이 생성되지 않는다`() {
         공휴일로_지정(신정)
         회원_등록(id = 1L, 근무요일 = Workday.WEEKDAYS)
 
@@ -137,7 +138,7 @@ class NotificationBatchServiceHolidayTest {
     }
 
     @Test
-    fun `비공휴일에는 출퇴근 알림이 정상적으로 생성된다`() {
+    fun `생성 기준일이 비공휴일이면 출퇴근 알림이 정상적으로 생성된다`() {
         회원_등록(id = 1L, 정책기준일 = 평일)
 
         sut.generateNotificationsForDate(평일)
@@ -147,7 +148,7 @@ class NotificationBatchServiceHolidayTest {
     }
 
     @Test
-    fun `야간 근무자의 CLOCK_OUT 은 다음날이 공휴일이어도 정상 생성된다`() {
+    fun `생성 기준일이 비공휴일이면 야간 근무자의 CLOCK_OUT 예정일이 공휴일이어도 생성된다`() {
         공휴일로_지정(신정)
         회원_등록(
             id = 1L,
@@ -157,6 +158,9 @@ class NotificationBatchServiceHolidayTest {
         )
 
         sut.generateNotificationsForDate(공휴일전날)
+
+        assertThat(notificationLogs.map { it.notificationType })
+            .containsExactlyInAnyOrder(NotificationType.CLOCK_IN, NotificationType.CLOCK_OUT)
 
         val clockOut = notificationLogs.first { it.notificationType == NotificationType.CLOCK_OUT }
         assertThat(clockOut.scheduledDate).isEqualTo(신정)
