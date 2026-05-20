@@ -146,6 +146,22 @@ class NotificationBatchServiceHolidayTest {
             .containsExactlyInAnyOrder(NotificationType.CLOCK_IN, NotificationType.CLOCK_OUT)
     }
 
+    @Test
+    fun `야간 근무자의 CLOCK_OUT 은 다음날이 공휴일이어도 정상 생성된다`() {
+        공휴일로_지정(신정)
+        회원_등록(
+            id = 1L,
+            정책기준일 = 공휴일전날,
+            출근시각 = LocalTime.of(22, 0),
+            퇴근시각 = LocalTime.of(6, 0),
+        )
+
+        sut.generateNotificationsForDate(공휴일전날)
+
+        val clockOut = notificationLogs.first { it.notificationType == NotificationType.CLOCK_OUT }
+        assertThat(clockOut.scheduledDate).isEqualTo(신정)
+    }
+
     private fun 공휴일로_지정(date: LocalDate) {
         holidayCalendar += date
     }
@@ -154,12 +170,14 @@ class NotificationBatchServiceHolidayTest {
         id: Long,
         정책기준일: LocalDate = 신정,
         근무요일: Set<Workday> = Workday.WEEKDAYS,
+        출근시각: LocalTime = LocalTime.of(9, 0),
+        퇴근시각: LocalTime = LocalTime.of(18, 0),
     ) {
         workPolicies += WorkPolicyVersion(
             memberId = id,
             effectiveFrom = 정책기준일.minusDays(30),
-            clockInTime = LocalTime.of(9, 0),
-            clockOutTime = LocalTime.of(18, 0),
+            clockInTime = 출근시각,
+            clockOutTime = 퇴근시각,
             workdays = 근무요일.toMutableSet(),
         )
         agreements += TermAgreement(memberId = id, termCode = TOS_CODE, agreed = true)
@@ -170,6 +188,7 @@ class NotificationBatchServiceHolidayTest {
     companion object {
         private const val TOS_CODE = "TERMS_OF_SERVICE"
         private val 신정: LocalDate = LocalDate.of(2026, 1, 1)
+        private val 공휴일전날: LocalDate = LocalDate.of(2025, 12, 31)
         private val 평일: LocalDate = LocalDate.of(2026, 3, 10)
     }
 }
