@@ -24,5 +24,6 @@ class NotificationBatchScheduler(
         log.info("{} : 출퇴근 알림 전송 배치 실행", LocalDateTime.now())
         val today = LocalDate.now(ZoneId.of("Asia/Seoul"))
         notificationBatchService.generateNotificationsForDate(today)
+        log.info("{} : 출퇴근 알림 전송 배치 완료", LocalDateTime.now())
     }
 }
