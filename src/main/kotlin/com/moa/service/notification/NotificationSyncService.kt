@@ -86,6 +86,8 @@ class NotificationSyncService(
         return sameDayLogs + nextDayClockOutLogs
     }
 
+    // 공휴일 가드는 자동 배치(NotificationBatchService)에만 적용한다.
+    // 사용자가 공휴일에 명시적으로 근무를 등록한 경우는 의도한 것으로 보고 알림을 생성한다.
     private fun ensureUpcomingWorkNotifications(
         memberId: Long,
         date: LocalDate,
@@ -111,8 +113,8 @@ class NotificationSyncService(
 
         if (date.atTime(schedule.clockInTime).isAfter(now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_IN &&
-                    it.scheduledDate == date &&
-                    it.status != NotificationStatus.CANCELLED
+                        it.scheduledDate == date &&
+                        it.status != NotificationStatus.CANCELLED
             }
         ) {
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime))
@@ -120,8 +122,8 @@ class NotificationSyncService(
 
         if (clockOutDate.atTime(schedule.clockOutTime).isAfter(now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_OUT &&
-                    it.scheduledDate == clockOutDate &&
-                    it.status != NotificationStatus.CANCELLED
+                        it.scheduledDate == clockOutDate &&
+                        it.status != NotificationStatus.CANCELLED
             }
         ) {
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, schedule.clockOutTime))
