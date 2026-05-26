@@ -10,13 +10,12 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
 
 @Service
 class NotificationSyncService(
     private val notificationLogRepository: NotificationLogRepository,
+    private val clock: NotificationScheduleClock,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
     private val workNotificationTypes = listOf(NotificationType.CLOCK_IN, NotificationType.CLOCK_OUT)
@@ -49,7 +48,7 @@ class NotificationSyncService(
             when (pendingLog.notificationType) {
                 NotificationType.CLOCK_IN -> {
                     clockInTime?.let {
-                        pendingLog.scheduledTime = LocalTime.of(it.hour, it.minute)
+                        pendingLog.scheduledTime = WorkScheduleTime.normalize(it)
                     }
                     pendingLog.scheduledDate = date
                 }
@@ -60,7 +59,7 @@ class NotificationSyncService(
                         pendingLog.scheduledDate = schedule.clockOutDate(date)
                         pendingLog.scheduledTime = schedule.clockOutTime
                     } else if (clockOutTime != null) {
-                        pendingLog.scheduledTime = LocalTime.of(clockOutTime.hour, clockOutTime.minute)
+                        pendingLog.scheduledTime = WorkScheduleTime.normalize(clockOutTime)
                         pendingLog.scheduledDate = date
                     }
                 }
@@ -75,7 +74,7 @@ class NotificationSyncService(
     private fun findPendingWorkNotifications(memberId: Long, date: LocalDate): List<NotificationLog> {
         val sameDayLogs = notificationLogRepository
             .findAllByMemberIdAndScheduledDateInAndStatus(memberId, listOf(date), NotificationStatus.PENDING)
-            .filter { it.notificationType != NotificationType.PAYDAY && it.notificationType != NotificationType.PUBLIC_HOLIDAY }
+            .filter { it.notificationType in workNotificationTypes }
         val nextDayClockOutLogs = notificationLogRepository
             .findAllByMemberIdAndScheduledDateAndNotificationTypeAndStatus(
                 memberId,
@@ -98,7 +97,7 @@ class NotificationSyncService(
         if (type != DailyWorkScheduleType.WORK) return
         if (clockInTime == null || clockOutTime == null) return
 
-        val now = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
+        val now = clock.now()
         val schedule = WorkScheduleTime.of(clockInTime, clockOutTime)
         val clockOutDate = schedule.clockOutDate(date)
         val relatedDates = listOf(date, date.plusDays(1))
@@ -111,7 +110,7 @@ class NotificationSyncService(
 
         val logs = mutableListOf<NotificationLog>()
 
-        if (date.atTime(schedule.clockInTime).isAfter(now) && existingLogs.none {
+        if (clock.isFutureSchedule(date, schedule.clockInTime, now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_IN &&
                         it.scheduledDate == date &&
                         it.status != NotificationStatus.CANCELLED
@@ -120,7 +119,7 @@ class NotificationSyncService(
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime))
         }
 
-        if (clockOutDate.atTime(schedule.clockOutTime).isAfter(now) && existingLogs.none {
+        if (clock.isFutureSchedule(clockOutDate, schedule.clockOutTime, now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_OUT &&
                         it.scheduledDate == clockOutDate &&
                         it.status != NotificationStatus.CANCELLED
