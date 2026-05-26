@@ -14,8 +14,10 @@ class WorkScheduleTime private constructor(
 
     companion object {
         fun of(clockIn: LocalTime, clockOut: LocalTime) = WorkScheduleTime(
-            clockInTime = LocalTime.of(clockIn.hour, clockIn.minute),
-            clockOutTime = LocalTime.of(clockOut.hour, clockOut.minute),
+            clockInTime = normalize(clockIn),
+            clockOutTime = normalize(clockOut),
         )
+
+        fun normalize(time: LocalTime): LocalTime = LocalTime.of(time.hour, time.minute)
     }
 }
