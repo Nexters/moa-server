@@ -59,9 +59,8 @@ class NotificationDispatchServiceMetricsTest {
     private val messageBuilder = mockk<NotificationMessageBuilder>().apply {
         every { buildMessage(any(), any()) } answers {
             val n = firstArg<NotificationLog>()
-            NotificationMessageBuildResult(
+            NotificationMessageBuildResult.Normal(
                 NotificationMessage("title", "body", n.notificationType),
-                fallbackUsed = false,
             )
         }
     }
@@ -111,21 +110,20 @@ class NotificationDispatchServiceMetricsTest {
     }
 
     @Test
-    fun `fallback 메시지로 발송된 알림은 fallback 카운터를 증가시키고 정상 발송된다`() {
+    fun `fallback 메시지로 빌드된 알림은 message_fallback 카운터를 증가시키고 정상 발송된다`() {
         notificationLogs += notificationLog(memberId = 1L, type = NotificationType.CLOCK_OUT)
         fcmTokens += FcmToken(memberId = 1L, token = "tok-1")
         every { messageBuilder.buildMessage(any(), any()) } answers {
             val n = firstArg<NotificationLog>()
-            NotificationMessageBuildResult(
+            NotificationMessageBuildResult.Fallback(
                 NotificationMessage("title", "오늘도 수고하셨어요!", n.notificationType),
-                fallbackUsed = true,
-                fallbackReason = NotificationMessageBuilder.REASON_EARNINGS_ERROR,
+                reason = NotificationMessageBuilder.REASON_EARNINGS_ERROR,
             )
         }
 
         sut.processNotifications(TODAY, NOON)
 
-        val fallback = registry.find("moa.notification.dispatch.fallback")
+        val fallback = registry.find("moa.notification.message.fallback")
             .tag("notification_type", "CLOCK_OUT").tag("reason", "earnings_error").counter()
         val failed = registry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "CLOCK_OUT").counter()

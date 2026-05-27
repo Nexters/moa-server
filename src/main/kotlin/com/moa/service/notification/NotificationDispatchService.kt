@@ -38,8 +38,8 @@ class NotificationDispatchService(
         .tag("reason", reason)
         .register(meterRegistry)
 
-    private fun fallbackCounter(type: String, reason: String): Counter = Counter.builder(METRIC_FALLBACK)
-        .description("fallback 메시지로 대체 발송된 알림 수")
+    private fun messageFallbackCounter(type: String, reason: String): Counter = Counter.builder(METRIC_MESSAGE_FALLBACK)
+        .description("메시지 빌드 시 fallback으로 대체된 알림 수 (FCM 발송 성공 여부와 별개)")
         .tag("notification_type", type)
         .tag("reason", reason)
         .register(meterRegistry)
@@ -80,8 +80,10 @@ class NotificationDispatchService(
             try {
                 val publicHolidays = holidaysByMonth[YearMonth.from(notification.scheduledDate)] ?: emptySet()
                 val result = notificationMessageBuilder.buildMessage(notification, publicHolidays)
-                if (result.fallbackUsed) {
-                    fallbackCounter(typeName, result.fallbackReason ?: REASON_UNKNOWN).increment()
+                when (result) {
+                    is NotificationMessageBuildResult.Fallback ->
+                        messageFallbackCounter(typeName, result.reason).increment()
+                    is NotificationMessageBuildResult.Normal -> Unit
                 }
                 val data = result.message.toData()
                 tokens.forEach { dispatchItems.add(DispatchItem(notification, it.token, data)) }
@@ -115,11 +117,10 @@ class NotificationDispatchService(
     companion object {
         private const val METRIC_ATTEMPTS = "moa.notification.dispatch.attempts"
         private const val METRIC_FAILED = "moa.notification.dispatch.failed"
-        private const val METRIC_FALLBACK = "moa.notification.dispatch.fallback"
+        private const val METRIC_MESSAGE_FALLBACK = "moa.notification.message.fallback"
         private const val REASON_NO_TOKEN = "no_token"
         private const val REASON_BUILD = "build"
         private const val REASON_FCM = "fcm"
-        private const val REASON_UNKNOWN = "unknown"
     }
 }
 

@@ -23,9 +23,8 @@ class NotificationMessageBuilder(
         val title = notification.notificationType.title
         return when (notification.notificationType) {
             NotificationType.CLOCK_IN, NotificationType.PAYDAY ->
-                NotificationMessageBuildResult(
+                NotificationMessageBuildResult.Normal(
                     NotificationMessage(title, notification.notificationType.body, notification.notificationType),
-                    fallbackUsed = false,
                 )
 
             NotificationType.CLOCK_OUT -> buildClockOutResult(notification, publicHolidays)
@@ -42,6 +41,9 @@ class NotificationMessageBuilder(
                 notification.scheduledDate,
                 publicHolidays,
             )
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            throw e
         } catch (e: Exception) {
             log.error(
                 "Fallback message used — earnings calculation failed for notification {}, member {}",
@@ -63,25 +65,23 @@ class NotificationMessageBuilder(
 
         val formatted = NumberFormat.getNumberInstance(Locale.KOREA)
             .format(earnings.setScale(0, RoundingMode.HALF_UP))
-        return NotificationMessageBuildResult(
+        return NotificationMessageBuildResult.Normal(
             NotificationMessage(
                 notification.notificationType.title,
                 notification.notificationType.getBody(formatted),
                 notification.notificationType,
             ),
-            fallbackUsed = false,
         )
     }
 
-    private fun fallbackResult(notification: NotificationLog, reason: String): NotificationMessageBuildResult =
-        NotificationMessageBuildResult(
-            NotificationMessage(
+    private fun fallbackResult(notification: NotificationLog, reason: String): NotificationMessageBuildResult.Fallback =
+        NotificationMessageBuildResult.Fallback(
+            message = NotificationMessage(
                 notification.notificationType.title,
                 CLOCK_OUT_FALLBACK_BODY,
                 notification.notificationType,
             ),
-            fallbackUsed = true,
-            fallbackReason = reason,
+            reason = reason,
         )
 
     companion object {
@@ -99,8 +99,15 @@ data class NotificationMessage(val title: String, val body: String, val type: No
     )
 }
 
-data class NotificationMessageBuildResult(
-    val message: NotificationMessage,
-    val fallbackUsed: Boolean,
-    val fallbackReason: String? = null,
-)
+sealed class NotificationMessageBuildResult {
+    abstract val message: NotificationMessage
+
+    data class Normal(
+        override val message: NotificationMessage,
+    ) : NotificationMessageBuildResult()
+
+    data class Fallback(
+        override val message: NotificationMessage,
+        val reason: String,
+    ) : NotificationMessageBuildResult()
+}
