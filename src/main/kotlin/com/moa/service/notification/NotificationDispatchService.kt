@@ -38,6 +38,12 @@ class NotificationDispatchService(
         .tag("reason", reason)
         .register(meterRegistry)
 
+    private fun fallbackCounter(type: String, reason: String): Counter = Counter.builder(METRIC_FALLBACK)
+        .description("fallback 메시지로 대체 발송된 알림 수")
+        .tag("notification_type", type)
+        .tag("reason", reason)
+        .register(meterRegistry)
+
     @Timed(value = "moa.notification.dispatch", histogram = true)
     fun processNotifications(date: LocalDate, currentTime: LocalTime) {
         val pendingLogs = notificationLogRepository
@@ -73,7 +79,11 @@ class NotificationDispatchService(
             }
             try {
                 val publicHolidays = holidaysByMonth[YearMonth.from(notification.scheduledDate)] ?: emptySet()
-                val data = notificationMessageBuilder.buildMessage(notification, publicHolidays).toData()
+                val result = notificationMessageBuilder.buildMessage(notification, publicHolidays)
+                if (result.fallbackUsed) {
+                    fallbackCounter(typeName, result.fallbackReason ?: REASON_UNKNOWN).increment()
+                }
+                val data = result.message.toData()
                 tokens.forEach { dispatchItems.add(DispatchItem(notification, it.token, data)) }
             } catch (e: Exception) {
                 notification.status = NotificationStatus.FAILED
@@ -105,9 +115,11 @@ class NotificationDispatchService(
     companion object {
         private const val METRIC_ATTEMPTS = "moa.notification.dispatch.attempts"
         private const val METRIC_FAILED = "moa.notification.dispatch.failed"
+        private const val METRIC_FALLBACK = "moa.notification.dispatch.fallback"
         private const val REASON_NO_TOKEN = "no_token"
         private const val REASON_BUILD = "build"
         private const val REASON_FCM = "fcm"
+        private const val REASON_UNKNOWN = "unknown"
     }
 }
 

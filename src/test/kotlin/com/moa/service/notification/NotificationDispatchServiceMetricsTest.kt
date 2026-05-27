@@ -19,11 +19,7 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * Step 5 — 비즈니스 메트릭 단위 테스트.
- *
- * - Classicist 스타일: out-of-process 의존성(Repository, FcmService, MessageBuilder)만 mock,
- *   `SimpleMeterRegistry`는 실물 사용.
- * - 단언은 메트릭 레지스트리의 최종 상태로만.
+ * 비즈니스 메트릭 단위 테스트.
  */
 class NotificationDispatchServiceMetricsTest {
 
@@ -63,7 +59,10 @@ class NotificationDispatchServiceMetricsTest {
     private val messageBuilder = mockk<NotificationMessageBuilder>().apply {
         every { buildMessage(any(), any()) } answers {
             val n = firstArg<NotificationLog>()
-            NotificationMessage("title", "body", n.notificationType)
+            NotificationMessageBuildResult(
+                NotificationMessage("title", "body", n.notificationType),
+                fallbackUsed = false,
+            )
         }
     }
     private val registry = SimpleMeterRegistry()
@@ -109,6 +108,30 @@ class NotificationDispatchServiceMetricsTest {
         val failed = registry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "CLOCK_OUT").tag("reason", "build").counter()
         assertThat(failed?.count()).isEqualTo(1.0)
+    }
+
+    @Test
+    fun `fallback 메시지로 발송된 알림은 fallback 카운터를 증가시키고 정상 발송된다`() {
+        notificationLogs += notificationLog(memberId = 1L, type = NotificationType.CLOCK_OUT)
+        fcmTokens += FcmToken(memberId = 1L, token = "tok-1")
+        every { messageBuilder.buildMessage(any(), any()) } answers {
+            val n = firstArg<NotificationLog>()
+            NotificationMessageBuildResult(
+                NotificationMessage("title", "오늘도 수고하셨어요!", n.notificationType),
+                fallbackUsed = true,
+                fallbackReason = NotificationMessageBuilder.REASON_EARNINGS_ERROR,
+            )
+        }
+
+        sut.processNotifications(TODAY, NOON)
+
+        val fallback = registry.find("moa.notification.dispatch.fallback")
+            .tag("notification_type", "CLOCK_OUT").tag("reason", "earnings_error").counter()
+        val failed = registry.find("moa.notification.dispatch.failed")
+            .tag("notification_type", "CLOCK_OUT").counter()
+        assertThat(fallback?.count()).isEqualTo(1.0)
+        assertThat(failed).isNull()
+        assertThat(notificationLogs[0].status).isEqualTo(NotificationStatus.SENT)
     }
 
     @Test

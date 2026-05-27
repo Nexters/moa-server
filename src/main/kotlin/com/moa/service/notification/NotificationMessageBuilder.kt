@@ -2,6 +2,7 @@ package com.moa.service.notification
 
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationType
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -13,40 +14,80 @@ import java.util.*
 class NotificationMessageBuilder(
     private val notificationEarningsService: NotificationEarningsService,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
 
     fun buildMessage(
         notification: NotificationLog,
         publicHolidays: Set<LocalDate>,
-    ): NotificationMessage {
+    ): NotificationMessageBuildResult {
         val title = notification.notificationType.title
-        val body = when (notification.notificationType) {
-            NotificationType.CLOCK_IN -> notification.notificationType.body
-            NotificationType.CLOCK_OUT -> buildClockOutBody(notification, publicHolidays)
-            NotificationType.PAYDAY -> notification.notificationType.body
-            NotificationType.PUBLIC_HOLIDAY -> notification.notificationType.body
+        return when (notification.notificationType) {
+            NotificationType.CLOCK_IN, NotificationType.PAYDAY ->
+                NotificationMessageBuildResult(
+                    NotificationMessage(title, notification.notificationType.body, notification.notificationType),
+                    fallbackUsed = false,
+                )
+
+            NotificationType.CLOCK_OUT -> buildClockOutResult(notification, publicHolidays)
         }
-        return NotificationMessage(title, body, notification.notificationType)
     }
 
-    private fun buildClockOutBody(
+    private fun buildClockOutResult(
         notification: NotificationLog,
         publicHolidays: Set<LocalDate>,
-    ): String {
-        val earnings = notificationEarningsService.calculateTodayEarnings(
-            notification.memberId,
-            notification.scheduledDate,
-            publicHolidays,
-        )
-        if (earnings == BigDecimal.ZERO) {
-            return CLOCK_OUT_FALLBACK_BODY
+    ): NotificationMessageBuildResult {
+        val earnings = try {
+            notificationEarningsService.calculateTodayEarnings(
+                notification.memberId,
+                notification.scheduledDate,
+                publicHolidays,
+            )
+        } catch (e: Exception) {
+            log.error(
+                "Fallback message used — earnings calculation failed for notification {}, member {}",
+                notification.id,
+                notification.memberId,
+                e,
+            )
+            return fallbackResult(notification, REASON_EARNINGS_ERROR)
         }
+
+        if (earnings == BigDecimal.ZERO) {
+            log.warn(
+                "Fallback message used — zero earnings for notification {}, member {}",
+                notification.id,
+                notification.memberId,
+            )
+            return fallbackResult(notification, REASON_ZERO_EARNINGS)
+        }
+
         val formatted = NumberFormat.getNumberInstance(Locale.KOREA)
             .format(earnings.setScale(0, RoundingMode.HALF_UP))
-        return notification.notificationType.getBody(formatted)
+        return NotificationMessageBuildResult(
+            NotificationMessage(
+                notification.notificationType.title,
+                notification.notificationType.getBody(formatted),
+                notification.notificationType,
+            ),
+            fallbackUsed = false,
+        )
     }
+
+    private fun fallbackResult(notification: NotificationLog, reason: String): NotificationMessageBuildResult =
+        NotificationMessageBuildResult(
+            NotificationMessage(
+                notification.notificationType.title,
+                CLOCK_OUT_FALLBACK_BODY,
+                notification.notificationType,
+            ),
+            fallbackUsed = true,
+            fallbackReason = reason,
+        )
 
     companion object {
         private const val CLOCK_OUT_FALLBACK_BODY = "오늘도 수고하셨어요!"
+        const val REASON_ZERO_EARNINGS = "zero_earnings"
+        const val REASON_EARNINGS_ERROR = "earnings_error"
     }
 }
 
@@ -57,3 +98,9 @@ data class NotificationMessage(val title: String, val body: String, val type: No
         "type" to type.name,
     )
 }
+
+data class NotificationMessageBuildResult(
+    val message: NotificationMessage,
+    val fallbackUsed: Boolean,
+    val fallbackReason: String? = null,
+)

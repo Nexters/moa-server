@@ -65,7 +65,6 @@ class NotificationSyncService(
                 }
 
                 NotificationType.PAYDAY -> Unit
-                NotificationType.PUBLIC_HOLIDAY -> Unit
             }
         }
         log.info("Synced pending notifications for member {} on {}", memberId, date)
