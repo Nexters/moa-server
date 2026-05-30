@@ -4,6 +4,7 @@ import com.moa.entity.PaydayDay
 import com.moa.entity.Profile
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationSettingType
+import com.moa.entity.notification.NotificationStatus
 import com.moa.entity.notification.NotificationType
 import com.moa.repository.NotificationLogRepository
 import com.moa.repository.ProfileRepository
@@ -30,7 +31,9 @@ class PaydayNotificationBatchService(
 
         val profileMemberIds = profiles.map { it.memberId }
         val alreadyGeneratedMemberIds = notificationLogRepository
-            .findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(date, NotificationType.PAYDAY, profileMemberIds)
+            .findMemberIdsByScheduledDateAndNotificationTypeAndStatusInAndMemberIdIn(
+                date, NotificationType.PAYDAY, NotificationStatus.ACTIVE_STATUSES, profileMemberIds,
+            )
             .toSet()
 
         val targetProfiles = profiles.filter { it.memberId !in alreadyGeneratedMemberIds }

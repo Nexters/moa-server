@@ -23,6 +23,7 @@ class NotificationDispatchService(
     private val fcmService: FcmService,
     private val notificationMessageBuilder: NotificationMessageBuilder,
     private val publicHolidayService: PublicHolidayService,
+    private val notificationTtlPolicy: NotificationTtlPolicy,
     private val meterRegistry: MeterRegistry,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -44,31 +45,63 @@ class NotificationDispatchService(
         .tag("reason", reason)
         .register(meterRegistry)
 
+    private fun expiredCounter(type: String): Counter = Counter.builder(METRIC_EXPIRED)
+        .description("TTL 초과로 EXPIRED 처리된 알림 수 (서버 다운 등 비정상 복구 시나리오에서만 증가)")
+        .tag("notification_type", type)
+        .register(meterRegistry)
+
     @Timed(value = "moa.notification.dispatch", histogram = true)
     fun processNotifications(date: LocalDate, currentTime: LocalTime) {
-        val pendingLogs = notificationLogRepository
+        val todayPending = notificationLogRepository
             .findAllByScheduledDateAndScheduledTimeLessThanEqualAndStatus(
                 scheduledDate = date,
                 scheduledTime = currentTime,
                 status = NotificationStatus.PENDING,
             )
+        val catchUpPending = notificationLogRepository
+            .findAllByScheduledDateLessThanAndStatus(
+                scheduledDate = date,
+                status = NotificationStatus.PENDING,
+            )
+        // 두 쿼리는 scheduledDate (=today vs <today) 로 disjoint 이지만, 미래 쿼리 변경 시
+        // 같은 row 가 두 번 들어오면 두 번째 패스에서 SENT 가 FAILED 로 덮어쓰여 silent regression.
+        val pendingLogs = (todayPending + catchUpPending).distinctBy { it.id }
         if (pendingLogs.isEmpty()) return
 
-        log.info("Dispatching {} pending notifications", pendingLogs.size)
+        log.info(
+            "Dispatching {} pending notifications (today={}, catchUp={})",
+            pendingLogs.size, todayPending.size, catchUpPending.size,
+        )
         pendingLogs.groupingBy { it.notificationType.name }.eachCount()
             .forEach { (type, n) -> attemptsCounter(type).increment(n.toDouble()) }
 
-        val memberIds = pendingLogs.map { it.memberId }.distinct()
+        val (expiredLogs, activeLogs) = pendingLogs.partition { notificationTtlPolicy.isExpired(it) }
+        expiredLogs.groupingBy { it.notificationType.name }.eachCount()
+            .forEach { (type, n) -> expiredCounter(type).increment(n.toDouble()) }
+        expiredLogs.forEach {
+            it.status = NotificationStatus.EXPIRED
+            log.warn(
+                "Notification expired: id={}, member={}, type={}, scheduledAt={} {}",
+                it.id, it.memberId, it.notificationType, it.scheduledDate, it.scheduledTime,
+            )
+        }
+
+        if (activeLogs.isEmpty()) {
+            notificationLogRepository.saveAll(pendingLogs)
+            return
+        }
+
+        val memberIds = activeLogs.map { it.memberId }.distinct()
         val tokensByMemberId = fcmTokenRepository.findAllByMemberIdIn(memberIds)
             .groupBy { it.memberId }
 
-        val holidaysByMonth = pendingLogs
+        val holidaysByMonth = activeLogs
             .map { YearMonth.from(it.scheduledDate) }
             .distinct()
             .associateWith { publicHolidayService.getHolidayDatesForMonth(it.year, it.monthValue) }
 
         val dispatchItems = mutableListOf<DispatchItem>()
-        for (notification in pendingLogs) {
+        for (notification in activeLogs) {
             val typeName = notification.notificationType.name
             val tokens = tokensByMemberId[notification.memberId].orEmpty()
             if (tokens.isEmpty()) {
@@ -104,7 +137,7 @@ class NotificationDispatchService(
             results.forEachIndexed { i, success ->
                 if (success) dispatchItems[i].notification.status = NotificationStatus.SENT
             }
-            pendingLogs.filter { it.status == NotificationStatus.PENDING }
+            activeLogs.filter { it.status == NotificationStatus.PENDING }
                 .forEach {
                     it.status = NotificationStatus.FAILED
                     failedCounter(it.notificationType.name, REASON_FCM).increment()
@@ -118,6 +151,7 @@ class NotificationDispatchService(
         private const val METRIC_ATTEMPTS = "moa.notification.dispatch.attempts"
         private const val METRIC_FAILED = "moa.notification.dispatch.failed"
         private const val METRIC_MESSAGE_FALLBACK = "moa.notification.message.fallback"
+        private const val METRIC_EXPIRED = "moa.notification.dispatch.expired"
         private const val REASON_NO_TOKEN = "no_token"
         private const val REASON_BUILD = "build"
         private const val REASON_FCM = "fcm"
