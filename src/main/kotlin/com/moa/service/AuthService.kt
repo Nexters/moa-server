@@ -6,10 +6,9 @@ import com.moa.entity.Member
 import com.moa.entity.ProviderType
 import com.moa.repository.MemberRepository
 import com.moa.service.dto.AppleSignInUpRequest
-import com.moa.service.dto.AppleSignInUpResponse
 import com.moa.service.dto.KaKaoSignInUpRequest
-import com.moa.service.dto.KakaoSignInUpResponse
 import com.moa.service.dto.LogoutRequest
+import com.moa.service.dto.SignInUpResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -22,7 +21,7 @@ class AuthService(
 ) {
 
     @Transactional
-    fun kakaoSignInUp(request: KaKaoSignInUpRequest): KakaoSignInUpResponse {
+    fun kakaoSignInUp(request: KaKaoSignInUpRequest): SignInUpResponse {
         val userInfo = oidcIdTokenValidator.validate(ProviderType.KAKAO, request.idToken)
 
         val member = memberRepository.findByProviderAndProviderSubject(
@@ -32,8 +31,9 @@ class AuthService(
 
         member?.let {
             request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(member.id, token) }
-            return KakaoSignInUpResponse(
-                jwtTokenProvider.createAccessToken(member.id)
+            return SignInUpResponse(
+                userId = member.id,
+                accessToken = jwtTokenProvider.createAccessToken(member.id),
             )
         }
 
@@ -50,13 +50,14 @@ class AuthService(
             registeredMember.id
         )
 
-        return KakaoSignInUpResponse(
-            registerToken,
+        return SignInUpResponse(
+            userId = registeredMember.id,
+            accessToken = registerToken,
         )
     }
 
     @Transactional
-    fun appleSignInUp(request: AppleSignInUpRequest): AppleSignInUpResponse {
+    fun appleSignInUp(request: AppleSignInUpRequest): SignInUpResponse {
         val userInfo = oidcIdTokenValidator.validate(ProviderType.APPLE, request.idToken)
 
         val member = memberRepository.findByProviderAndProviderSubject(
@@ -66,8 +67,9 @@ class AuthService(
 
         member?.let {
             request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(member.id, token) }
-            return AppleSignInUpResponse(
-                jwtTokenProvider.createAccessToken(member.id)
+            return SignInUpResponse(
+                userId = member.id,
+                accessToken = jwtTokenProvider.createAccessToken(member.id),
             )
         }
 
@@ -84,8 +86,9 @@ class AuthService(
             registeredMember.id
         )
 
-        return AppleSignInUpResponse(
-            registerToken,
+        return SignInUpResponse(
+            userId = registeredMember.id,
+            accessToken = registerToken,
         )
     }
 

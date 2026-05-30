@@ -19,12 +19,12 @@ class AuthController(
 ) {
 
     @PostMapping("/api/v1/auth/kakao")
-    fun kakaoSignInUp(@RequestBody @Valid kaKaoSignInUpRequest: KaKaoSignInUpRequest): ResponseEntity<ApiResponse<KakaoSignInUpResponse>> {
+    fun kakaoSignInUp(@RequestBody @Valid kaKaoSignInUpRequest: KaKaoSignInUpRequest): ResponseEntity<ApiResponse<SignInUpResponse>> {
         return ResponseEntity.ok(ApiResponse.success(authService.kakaoSignInUp(kaKaoSignInUpRequest)))
     }
 
     @PostMapping("/api/v1/auth/apple")
-    fun appleSignInUp(@RequestBody appleSignInUpRequest: AppleSignInUpRequest): ResponseEntity<ApiResponse<AppleSignInUpResponse>> {
+    fun appleSignInUp(@RequestBody @Valid appleSignInUpRequest: AppleSignInUpRequest): ResponseEntity<ApiResponse<SignInUpResponse>> {
         return ResponseEntity.ok(ApiResponse.success(authService.appleSignInUp(appleSignInUpRequest)))
     }
 
