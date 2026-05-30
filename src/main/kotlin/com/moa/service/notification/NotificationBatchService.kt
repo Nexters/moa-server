@@ -4,6 +4,7 @@ import com.moa.entity.WorkPolicyVersion
 import com.moa.entity.Workday
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationSettingType
+import com.moa.entity.notification.NotificationStatus
 import com.moa.entity.notification.NotificationType
 import com.moa.entity.notification.WorkScheduleTime
 import com.moa.repository.NotificationLogRepository
@@ -34,30 +35,44 @@ class NotificationBatchService(
         if (workdayPolicies.isEmpty()) return
 
         val workdayMemberIds = workdayPolicies.map { it.memberId }
-        val alreadyGeneratedMemberIds = notificationLogRepository
-            .findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(
-                date,
-                NotificationType.CLOCK_IN,
-                workdayMemberIds
-            )
-            .toSet()
+        val existing = loadExistingWorkNotifications(date, workdayMemberIds)
 
-        val targetPolicies = workdayPolicies.filter { it.memberId !in alreadyGeneratedMemberIds }
-        if (targetPolicies.isEmpty()) return
-
-        val memberIds = targetPolicies.map { it.memberId }
         val requiredTermCodes = notificationEligibilityService.findRequiredTermCodes()
-        val context = notificationEligibilityService.loadContext(memberIds, date)
+        val context = notificationEligibilityService.loadContext(workdayMemberIds, date)
 
-        log.info("Generating notifications for {} members on {}", memberIds.size, date)
+        log.info("Generating notifications for {} members on {}", workdayMemberIds.size, date)
 
-        val notifications = targetPolicies.mapNotNull { policy ->
-            createNotificationsIfEligible(policy, date, requiredTermCodes, context)
+        val notifications = workdayPolicies.mapNotNull { policy ->
+            createNotificationsIfEligible(policy, date, requiredTermCodes, context, existing)
         }.flatten()
+
+        if (notifications.isEmpty()) {
+            log.info("No new notification logs to create for {} (all already generated)", date)
+            return
+        }
 
         notificationLogRepository.saveAll(notifications)
         log.info("Created {} notification logs for {}", notifications.size, date)
     }
+
+    private fun loadExistingWorkNotifications(
+        date: LocalDate,
+        memberIds: List<Long>,
+    ): ExistingWorkNotifications {
+        val clockIn = activeMemberIdsFor(date, NotificationType.CLOCK_IN, memberIds)
+        val clockOutToday = activeMemberIdsFor(date, NotificationType.CLOCK_OUT, memberIds)
+        val clockOutTomorrow = activeMemberIdsFor(date.plusDays(1), NotificationType.CLOCK_OUT, memberIds)
+        return ExistingWorkNotifications(clockIn, clockOutToday, clockOutTomorrow)
+    }
+
+    private fun activeMemberIdsFor(
+        date: LocalDate,
+        type: NotificationType,
+        memberIds: List<Long>,
+    ): Set<Long> = notificationLogRepository
+        .findMemberIdsByScheduledDateAndNotificationTypeAndStatusInAndMemberIdIn(
+            date, type, NotificationStatus.ACTIVE_STATUSES, memberIds,
+        ).toSet()
 
     private fun findWorkdayPolicies(date: LocalDate): List<WorkPolicyVersion> {
         val todayWorkday = Workday.from(date)
@@ -70,6 +85,7 @@ class NotificationBatchService(
         date: LocalDate,
         requiredCodes: Set<String>,
         context: NotificationEligibilityContext,
+        existing: ExistingWorkNotifications,
     ): List<NotificationLog>? {
         val memberId = policy.memberId
 
@@ -83,10 +99,23 @@ class NotificationBatchService(
             clockIn = override?.clockInTime ?: policy.clockInTime,
             clockOut = override?.clockOutTime ?: policy.clockOutTime,
         )
+        val clockOutDate = schedule.clockOutDate(date)
+        val clockOutExisting =
+            if (clockOutDate == date) existing.clockOutToday else existing.clockOutTomorrow
 
-        return listOf(
-            NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime),
-            NotificationLog(memberId, NotificationType.CLOCK_OUT, schedule.clockOutDate(date), schedule.clockOutTime),
-        )
+        val result = mutableListOf<NotificationLog>()
+        if (memberId !in existing.clockIn) {
+            result.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime))
+        }
+        if (memberId !in clockOutExisting) {
+            result.add(NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, schedule.clockOutTime))
+        }
+        return result.ifEmpty { null }
     }
+
+    private data class ExistingWorkNotifications(
+        val clockIn: Set<Long>,
+        val clockOutToday: Set<Long>,
+        val clockOutTomorrow: Set<Long>,
+    )
 }

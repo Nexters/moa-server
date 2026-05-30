@@ -7,6 +7,7 @@ import com.moa.entity.WorkPolicyVersion
 import com.moa.entity.Workday
 import com.moa.entity.notification.NotificationLog
 import com.moa.entity.notification.NotificationSetting
+import com.moa.entity.notification.NotificationStatus
 import com.moa.entity.notification.NotificationType
 import com.moa.repository.DailyWorkScheduleRepository
 import com.moa.repository.FcmTokenRepository
@@ -26,15 +27,15 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * 공휴일 정책 박제 테스트.
+ * `NotificationBatchService` 멱등성 박제 테스트.
  *
- * - 정책: 자동 배치는 생성 기준일(date)이 공휴일이면 푸시 알림 로그를 생성하지 않는다.
- * - 비공휴일 근무에서 발생한 야간 근무자의 익일 CLOCK_OUT 알림은 scheduledDate가 공휴일이어도 생성한다.
- * - `NotificationBatchService.generateNotificationsForDate` 의 holiday 가드 동작을 검증
+ * 정책: 같은 (memberId, scheduledDate, notificationType) 페어가 이미 존재하면 재생성하지 않는다.
+ * - CLOCK_IN 만 존재할 때 → CLOCK_OUT 만 새로 생성된다
+ * - 둘 다 존재하면 → 아무것도 생성되지 않는다.
+ * - 야간근무자의 CLOCK_OUT 은 다음날 날짜 기준으로 체크한다.
  */
-class NotificationBatchServiceHolidayTest {
+class NotificationBatchServiceIdempotencyTest {
 
-    private val holidayCalendar = mutableSetOf<LocalDate>()
     private val workPolicies = mutableListOf<WorkPolicyVersion>()
     private val notificationLogs = mutableListOf<NotificationLog>()
     private val terms = mutableListOf<Term>()
@@ -43,7 +44,7 @@ class NotificationBatchServiceHolidayTest {
     private val fcmTokens = mutableListOf<FcmToken>()
 
     private val publicHolidayRepo = mockk<PublicHolidayRepository>().apply {
-        every { existsByDate(any()) } answers { firstArg<LocalDate>() in holidayCalendar }
+        every { existsByDate(any()) } returns false
     }
     private val workPolicyRepo = mockk<WorkPolicyVersionRepository>().apply {
         every { findLatestEffectivePoliciesPerMember(any()) } answers {
@@ -65,7 +66,7 @@ class NotificationBatchServiceHolidayTest {
         } answers {
             val date = firstArg<LocalDate>()
             val type = secondArg<NotificationType>()
-            val statuses = thirdArg<Collection<com.moa.entity.notification.NotificationStatus>>()
+            val statuses = thirdArg<Collection<NotificationStatus>>()
             val ids = arg<Collection<Long>>(3)
             notificationLogs
                 .filter {
@@ -123,69 +124,121 @@ class NotificationBatchServiceHolidayTest {
     }
 
     @Test
-    fun `생성 기준일이 공휴일이면 적격한 회원이 있어도 알림이 생성되지 않는다`() {
-        공휴일로_지정(신정)
+    fun `같은 날 CLOCK_IN 과 CLOCK_OUT 이 둘 다 이미 있으면 아무것도 새로 생성되지 않는다`() {
         회원_등록(id = 1L)
-
-        sut.generateNotificationsForDate(신정)
-
-        assertThat(notificationLogs).isEmpty()
-    }
-
-    @Test
-    fun `생성 기준일이 공휴일이면 정책상 근무 요일이어도 출퇴근 알림이 생성되지 않는다`() {
-        공휴일로_지정(신정)
-        회원_등록(id = 1L, 근무요일 = Workday.WEEKDAYS)
-
-        sut.generateNotificationsForDate(신정)
-
-        assertThat(notificationLogs.none { it.notificationType == NotificationType.CLOCK_IN }).isTrue()
-        assertThat(notificationLogs.none { it.notificationType == NotificationType.CLOCK_OUT }).isTrue()
-    }
-
-    @Test
-    fun `생성 기준일이 비공휴일이면 출퇴근 알림이 정상적으로 생성된다`() {
-        회원_등록(id = 1L, 정책기준일 = 평일)
+        선존재_알림(memberId = 1L, date = 평일, type = NotificationType.CLOCK_IN, time = LocalTime.of(9, 0))
+        선존재_알림(memberId = 1L, date = 평일, type = NotificationType.CLOCK_OUT, time = LocalTime.of(18, 0))
 
         sut.generateNotificationsForDate(평일)
 
-        assertThat(notificationLogs.map { it.notificationType })
+        // 선존재 2건 외 새 생성 없음
+        assertThat(notificationLogs).hasSize(2)
+    }
+
+    @Test
+    fun `CLOCK_IN 만 존재하고 CLOCK_OUT 이 누락된 상태라면 CLOCK_OUT 만 새로 생성된다`() {
+        회원_등록(id = 1L)
+        선존재_알림(memberId = 1L, date = 평일, type = NotificationType.CLOCK_IN, time = LocalTime.of(9, 0))
+
+        sut.generateNotificationsForDate(평일)
+
+        val byType = notificationLogs.groupingBy { it.notificationType }.eachCount()
+        assertThat(byType[NotificationType.CLOCK_IN]).isEqualTo(1)
+        assertThat(byType[NotificationType.CLOCK_OUT]).isEqualTo(1)
+    }
+
+    @Test
+    fun `CLOCK_OUT 만 존재하고 CLOCK_IN 이 누락된 상태라면 CLOCK_IN 만 새로 생성된다`() {
+        회원_등록(id = 1L)
+        선존재_알림(memberId = 1L, date = 평일, type = NotificationType.CLOCK_OUT, time = LocalTime.of(18, 0))
+
+        sut.generateNotificationsForDate(평일)
+
+        val byType = notificationLogs.groupingBy { it.notificationType }.eachCount()
+        assertThat(byType[NotificationType.CLOCK_IN]).isEqualTo(1)
+        assertThat(byType[NotificationType.CLOCK_OUT]).isEqualTo(1)
+    }
+
+    @Test
+    fun `야간근무자의 CLOCK_OUT 멱등성은 다음날 날짜 기준으로 체크된다`() {
+        // 야간근무: 22시 출근 → 06시 퇴근 (다음날)
+        회원_등록(id = 1L, 출근시각 = LocalTime.of(22, 0), 퇴근시각 = LocalTime.of(6, 0))
+        선존재_알림(
+            memberId = 1L,
+            date = 평일.plusDays(1),
+            type = NotificationType.CLOCK_OUT,
+            time = LocalTime.of(6, 0),
+        )
+
+        sut.generateNotificationsForDate(평일)
+
+        val byType = notificationLogs.groupingBy { it.notificationType }.eachCount()
+        // 어제 등록된 CLOCK_OUT (다음날=평일+1) 1건 + 오늘 새로 만든 CLOCK_IN 1건
+        assertThat(byType[NotificationType.CLOCK_IN]).isEqualTo(1)
+        assertThat(byType[NotificationType.CLOCK_OUT]).isEqualTo(1)
+    }
+
+    @Test
+    fun `CANCELLED 상태의 행은 absent 로 간주되어 같은 type 의 알림이 재생성된다`() {
+        // 시나리오: 어제 휴가 등록 → 오늘 CLOCK_IN/OUT 이 CANCELLED 됨
+        //          어제 휴가 취소 → 오늘 자정 배치 시 CLOCK_IN/OUT 재생성되어야 함
+        회원_등록(id = 1L)
+        선존재_알림(
+            memberId = 1L, date = 평일, type = NotificationType.CLOCK_IN,
+            time = LocalTime.of(9, 0), status = NotificationStatus.CANCELLED,
+        )
+        선존재_알림(
+            memberId = 1L, date = 평일, type = NotificationType.CLOCK_OUT,
+            time = LocalTime.of(18, 0), status = NotificationStatus.CANCELLED,
+        )
+
+        sut.generateNotificationsForDate(평일)
+
+        val pending = notificationLogs.filter { it.status == NotificationStatus.PENDING }
+        assertThat(pending.map { it.notificationType })
             .containsExactlyInAnyOrder(NotificationType.CLOCK_IN, NotificationType.CLOCK_OUT)
     }
 
     @Test
-    fun `생성 기준일이 비공휴일이면 야간 근무자의 CLOCK_OUT 예정일이 공휴일이어도 생성된다`() {
-        공휴일로_지정(신정)
-        회원_등록(
-            id = 1L,
-            정책기준일 = 공휴일전날,
-            출근시각 = LocalTime.of(22, 0),
-            퇴근시각 = LocalTime.of(6, 0),
+    fun `EXPIRED 상태의 행도 absent 로 간주되어 재생성된다`() {
+        회원_등록(id = 1L)
+        선존재_알림(
+            memberId = 1L, date = 평일, type = NotificationType.CLOCK_IN,
+            time = LocalTime.of(9, 0), status = NotificationStatus.EXPIRED,
         )
 
-        sut.generateNotificationsForDate(공휴일전날)
+        sut.generateNotificationsForDate(평일)
 
-        assertThat(notificationLogs.map { it.notificationType })
+        val pending = notificationLogs.filter { it.status == NotificationStatus.PENDING }
+        assertThat(pending.map { it.notificationType })
             .containsExactlyInAnyOrder(NotificationType.CLOCK_IN, NotificationType.CLOCK_OUT)
-
-        val clockOut = notificationLogs.first { it.notificationType == NotificationType.CLOCK_OUT }
-        assertThat(clockOut.scheduledDate).isEqualTo(신정)
     }
 
-    private fun 공휴일로_지정(date: LocalDate) {
-        holidayCalendar += date
+    private fun 선존재_알림(
+        memberId: Long,
+        date: LocalDate,
+        type: NotificationType,
+        time: LocalTime,
+        status: NotificationStatus = NotificationStatus.PENDING,
+    ) {
+        notificationLogs += NotificationLog(
+            memberId = memberId,
+            notificationType = type,
+            scheduledDate = date,
+            scheduledTime = time,
+            status = status,
+        )
     }
 
     private fun 회원_등록(
         id: Long,
-        정책기준일: LocalDate = 신정,
         근무요일: Set<Workday> = Workday.WEEKDAYS,
         출근시각: LocalTime = LocalTime.of(9, 0),
         퇴근시각: LocalTime = LocalTime.of(18, 0),
     ) {
         workPolicies += WorkPolicyVersion(
             memberId = id,
-            effectiveFrom = 정책기준일.minusDays(30),
+            effectiveFrom = 평일.minusDays(30),
             clockInTime = 출근시각,
             clockOutTime = 퇴근시각,
             workdays = 근무요일.toMutableSet(),
@@ -197,8 +250,6 @@ class NotificationBatchServiceHolidayTest {
 
     companion object {
         private const val TOS_CODE = "TERMS_OF_SERVICE"
-        private val 신정: LocalDate = LocalDate.of(2026, 1, 1)
-        private val 공휴일전날: LocalDate = LocalDate.of(2025, 12, 31)
         private val 평일: LocalDate = LocalDate.of(2026, 3, 10)
     }
 }

@@ -37,6 +37,11 @@ class NotificationDispatchServiceMetricsTest {
                 it.scheduledDate == date && !it.scheduledTime.isAfter(time) && it.status == status
             }
         }
+        every { findAllByScheduledDateLessThanAndStatus(any(), any()) } answers {
+            val date = firstArg<LocalDate>()
+            val status = secondArg<NotificationStatus>()
+            notificationLogs.filter { it.scheduledDate < date && it.status == status }
+        }
         every { saveAll(any<Iterable<NotificationLog>>()) } answers {
             firstArg<Iterable<NotificationLog>>().toList()
         }
@@ -65,6 +70,12 @@ class NotificationDispatchServiceMetricsTest {
         }
     }
     private val registry = SimpleMeterRegistry()
+    private val clock = mockk<NotificationScheduleClock>().apply {
+        // 기본: 오늘 11:15. 11시 예약 알림이 어떤 type 이어도 not expired 인 상태.
+        // CLOCK_IN TTL=30분 → deadline=11:30 > 11:15 → not expired.
+        every { now() } returns java.time.LocalDateTime.of(TODAY, java.time.LocalTime.of(11, 15))
+    }
+    private val ttlPolicy = NotificationTtlPolicy(clock)
 
     private val sut = NotificationDispatchService(
         notificationLogRepo,
@@ -72,6 +83,7 @@ class NotificationDispatchServiceMetricsTest {
         fcmService,
         messageBuilder,
         publicHolidayService,
+        ttlPolicy,
         registry,
     )
 
@@ -146,6 +158,30 @@ class NotificationDispatchServiceMetricsTest {
         val failed = registry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "PAYDAY").tag("reason", "fcm").counter()
         assertThat(failed?.count()).isEqualTo(1.0)
+    }
+
+    @Test
+    fun `TTL을 초과한 catch_up 알림은 EXPIRED로 마킹되고 expired 카운터를 증가시킨다`() {
+        val yesterday = TODAY.minusDays(1)
+        val expiredLog = NotificationLog(
+            memberId = 1L,
+            notificationType = NotificationType.CLOCK_IN,
+            scheduledDate = yesterday,
+            scheduledTime = LocalTime.of(9, 0),  // 어제 9시 → TTL 30분 한참 초과
+            status = NotificationStatus.PENDING,
+        )
+        notificationLogs += expiredLog
+        fcmTokens += FcmToken(memberId = 1L, token = "tok-1")
+
+        sut.processNotifications(TODAY, NOON)
+
+        val expired = registry.find("moa.notification.dispatch.expired")
+            .tag("notification_type", "CLOCK_IN").counter()
+        val attempts = registry.find("moa.notification.dispatch.attempts")
+            .tag("notification_type", "CLOCK_IN").counter()
+        assertThat(expired?.count()).isEqualTo(1.0)
+        assertThat(attempts?.count()).isEqualTo(1.0)
+        assertThat(expiredLog.status).isEqualTo(NotificationStatus.EXPIRED)
     }
 
     private fun notificationLog(memberId: Long, type: NotificationType) = NotificationLog(

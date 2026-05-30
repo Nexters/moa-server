@@ -112,7 +112,7 @@ class NotificationSyncService(
         if (clock.isFutureSchedule(date, schedule.clockInTime, now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_IN &&
                         it.scheduledDate == date &&
-                        it.status != NotificationStatus.CANCELLED
+                        it.status !in NotificationStatus.INACTIVE_STATUSES
             }
         ) {
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_IN, date, schedule.clockInTime))
@@ -121,7 +121,7 @@ class NotificationSyncService(
         if (clock.isFutureSchedule(clockOutDate, schedule.clockOutTime, now) && existingLogs.none {
                 it.notificationType == NotificationType.CLOCK_OUT &&
                         it.scheduledDate == clockOutDate &&
-                        it.status != NotificationStatus.CANCELLED
+                        it.status !in NotificationStatus.INACTIVE_STATUSES
             }
         ) {
             logs.add(NotificationLog(memberId, NotificationType.CLOCK_OUT, clockOutDate, schedule.clockOutTime))

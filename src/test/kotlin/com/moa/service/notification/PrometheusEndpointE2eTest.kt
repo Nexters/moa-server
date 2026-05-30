@@ -70,16 +70,18 @@ class PrometheusEndpointE2eTest @Autowired constructor(
 
     @Test
     fun `E2E - dispatch 후 actuator prometheus 엔드포인트가 신규 메트릭을 텍스트로 노출한다`() {
+        // PAYDAY 는 TTL 정책상 당일 자정까지 not expired 이므로 시각 의존성을 줄이기 위해 사용.
+        val today = LocalDate.now()
         notificationLogRepository.save(
             NotificationLog(
                 memberId = 1L,
-                notificationType = NotificationType.CLOCK_IN,
-                scheduledDate = TODAY,
-                scheduledTime = NOON.minusHours(1),
+                notificationType = NotificationType.PAYDAY,
+                scheduledDate = today,
+                scheduledTime = LocalTime.of(9, 0),
                 status = NotificationStatus.PENDING,
             )
         )
-        notificationDispatchService.processNotifications(TODAY, NOON)
+        notificationDispatchService.processNotifications(today, LocalTime.of(12, 0))
 
         val body = httpClient.get()
             .uri("http://localhost:$port/actuator/prometheus")
@@ -96,7 +98,7 @@ class PrometheusEndpointE2eTest @Autowired constructor(
         assertThat(body).contains("moa_notification_dispatch_seconds_bucket")
 
         // 3) 분기별 태그가 그대로 직렬화되어 보이는지 (notification_type, reason)
-        assertThat(body).contains("notification_type=\"CLOCK_IN\"")
+        assertThat(body).contains("notification_type=\"PAYDAY\"")
         assertThat(body).contains("reason=\"no_token\"")
 
         // 4) common tag — 비즈니스 메트릭 라인에 *실제로* 부착되었는지 확인.
@@ -142,8 +144,4 @@ class PrometheusEndpointE2eTest @Autowired constructor(
             mockk(relaxed = true)
     }
 
-    companion object {
-        private val TODAY: LocalDate = LocalDate.of(2026, 5, 1)
-        private val NOON: LocalTime = LocalTime.NOON
-    }
 }

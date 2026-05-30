@@ -37,22 +37,23 @@ class NotificationDispatchIntegrationTest @Autowired constructor(
 
     @Test
     fun `통합 - dispatch 호출 후 PrometheusMeterRegistry에 비즈니스 메트릭과 common tag가 함께 기록된다`() {
+        val today = LocalDate.now()
         notificationLogRepository.save(
             NotificationLog(
                 memberId = 1L,
-                notificationType = NotificationType.CLOCK_IN,
-                scheduledDate = TODAY,
-                scheduledTime = NOON.minusHours(1),
+                notificationType = NotificationType.PAYDAY,
+                scheduledDate = today,
+                scheduledTime = LocalTime.of(9, 0),
                 status = NotificationStatus.PENDING,
             )
         )
 
-        notificationDispatchService.processNotifications(TODAY, NOON)
+        notificationDispatchService.processNotifications(today, LocalTime.of(12, 0))
 
         val attempts = meterRegistry.find("moa.notification.dispatch.attempts")
-            .tag("notification_type", "CLOCK_IN").counter()
+            .tag("notification_type", "PAYDAY").counter()
         val failed = meterRegistry.find("moa.notification.dispatch.failed")
-            .tag("notification_type", "CLOCK_IN").tag("reason", "no_token").counter()
+            .tag("notification_type", "PAYDAY").tag("reason", "no_token").counter()
 
         assertThat(attempts?.count()).isEqualTo(1.0)
         assertThat(failed?.count()).isEqualTo(1.0)
@@ -67,8 +68,8 @@ class NotificationDispatchIntegrationTest @Autowired constructor(
         val failedTags = failed?.id?.tags.orEmpty().associate { it.key to it.value }
 
         // 분기 태그 — 비즈니스 코드가 직접 붙인 태그가 정확히 흘러갔는지
-        assertThat(attemptsTags["notification_type"]).isEqualTo("CLOCK_IN")
-        assertThat(failedTags["notification_type"]).isEqualTo("CLOCK_IN")
+        assertThat(attemptsTags["notification_type"]).isEqualTo("PAYDAY")
+        assertThat(failedTags["notification_type"]).isEqualTo("PAYDAY")
         assertThat(failedTags["reason"]).isEqualTo("no_token")
 
         // common tag — 값이 비어있지 않은지
@@ -80,10 +81,5 @@ class NotificationDispatchIntegrationTest @Autowired constructor(
         assertThat(failedTags["application"]).isEqualTo(attemptsTags["application"])
         assertThat(failedTags["deploy_color"]).isEqualTo(attemptsTags["deploy_color"])
         assertThat(failedTags["app_version"]).isEqualTo(attemptsTags["app_version"])
-    }
-
-    companion object {
-        private val TODAY: LocalDate = LocalDate.of(2026, 5, 1)
-        private val NOON: LocalTime = LocalTime.NOON
     }
 }

@@ -15,6 +15,11 @@ interface NotificationLogRepository : JpaRepository<NotificationLog, Long> {
         status: NotificationStatus,
     ): List<NotificationLog>
 
+    fun findAllByScheduledDateLessThanAndStatus(
+        scheduledDate: LocalDate,
+        status: NotificationStatus,
+    ): List<NotificationLog>
+
     fun findAllByMemberIdAndScheduledDateInAndStatus(
         memberId: Long,
         scheduledDates: Collection<LocalDate>,
@@ -39,11 +44,13 @@ interface NotificationLogRepository : JpaRepository<NotificationLog, Long> {
                 "from NotificationLog n " +
                 "where n.scheduledDate = :scheduledDate " +
                 "and n.notificationType = :notificationType " +
-                "and n.memberId in :memberIds"
+                "and n.memberId in :memberIds " +
+                "and n.status in :statuses"
     )
-    fun findMemberIdsByScheduledDateAndNotificationTypeAndMemberIdIn(
+    fun findMemberIdsByScheduledDateAndNotificationTypeAndStatusInAndMemberIdIn(
         scheduledDate: LocalDate,
         notificationType: NotificationType,
+        statuses: Collection<NotificationStatus>,
         memberIds: Collection<Long>,
     ): List<Long>
 }
