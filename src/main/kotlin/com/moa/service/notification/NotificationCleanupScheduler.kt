@@ -1,6 +1,5 @@
 package com.moa.service.notification
 
-import com.moa.service.notification.NotificationCleanupScheduler.Companion.CLEANUP_THRESHOLD_DAYS
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
