@@ -1,6 +1,11 @@
 package com.moa.service
 
-import com.google.firebase.messaging.*
+import com.google.firebase.messaging.AndroidConfig
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessagingException
+import com.google.firebase.messaging.Message
+import com.google.firebase.messaging.MessagingErrorCode
+import com.google.firebase.messaging.Notification
 import com.moa.repository.FcmTokenRepository
 import com.moa.service.dto.FcmRequest
 import io.micrometer.core.instrument.Counter
@@ -73,21 +78,23 @@ class FcmService(
 
     private fun handleFcmException(ex: Exception?, token: String) {
         val fcmEx = ex as? FirebaseMessagingException ?: run {
-            log.error("FCM 전송 중 예상치 못한 예외: {}", token, ex)
+            log.error("FCM 전송 중 예상치 못한 예외: tokenPrefix={}", maskToken(token), ex)
             return
         }
         when (fcmEx.messagingErrorCode) {
             MessagingErrorCode.UNREGISTERED -> {
-                log.warn("유효하지 않은 FCM 토큰 삭제: {}", token)
+                log.warn("유효하지 않은 FCM 토큰 삭제: tokenPrefix={}", maskToken(token))
                 fcmTokenRepository.deleteByToken(token)
                 tokenInvalidated("unregistered").increment()
             }
+
             MessagingErrorCode.INVALID_ARGUMENT -> {
-                log.warn("유효하지 않은 FCM 토큰 삭제: {}", token)
+                log.warn("유효하지 않은 FCM 토큰 삭제: tokenPrefix={}", maskToken(token))
                 fcmTokenRepository.deleteByToken(token)
                 tokenInvalidated("invalid_argument").increment()
             }
-            else -> log.error("FCM 전송 실패: {}", token, fcmEx)
+
+            else -> log.error("FCM 전송 실패: tokenPrefix={}", maskToken(token), fcmEx)
         }
     }
 
@@ -95,5 +102,14 @@ class FcmService(
         private const val MAX_BATCH_SIZE = 500
         private const val METRIC_SEND = "moa.fcm.send"
         private const val METRIC_TOKEN_INVALIDATED = "moa.fcm.token_invalidated"
+        private const val TOKEN_PREFIX_LENGTH = 8
+
+        /**
+         * FCM 토큰을 로그에 남길 때 식별용 prefix 만 노출한다.
+         */
+        fun maskToken(token: String): String {
+            if (token.length <= TOKEN_PREFIX_LENGTH) return "***"
+            return token.take(TOKEN_PREFIX_LENGTH) + "***"
+        }
     }
 }
