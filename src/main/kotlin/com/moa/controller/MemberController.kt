@@ -2,6 +2,7 @@ package com.moa.controller
 
 import com.moa.common.auth.Auth
 import com.moa.common.auth.AuthMemberInfo
+import com.moa.common.auth.OnboardingAuth
 import com.moa.common.response.ApiResponse
 import com.moa.service.MemberService
 import com.moa.service.dto.WithdrawalRequest
@@ -21,7 +22,7 @@ class MemberController(
 
     @PostMapping("/withdrawal")
     fun deleteMember(
-        @Auth member: AuthMemberInfo,
+        @OnboardingAuth member: AuthMemberInfo,
         @RequestBody req: WithdrawalRequest,
     ) =
         ApiResponse.success(memberService.deleteMember(member.id, req))
