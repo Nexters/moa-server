@@ -1,6 +1,7 @@
 package com.moa.service
 
 import com.moa.common.auth.JwtTokenProvider
+import com.moa.common.exception.UnauthorizedException
 import com.moa.common.oidc.OidcIdTokenValidator
 import com.moa.entity.Member
 import com.moa.entity.ProviderType
@@ -9,6 +10,8 @@ import com.moa.service.dto.AppleSignInUpRequest
 import com.moa.service.dto.KaKaoSignInUpRequest
 import com.moa.service.dto.LogoutRequest
 import com.moa.service.dto.SignInUpResponse
+import com.moa.service.dto.TokenRefreshRequest
+import com.moa.service.dto.TokenRefreshResponse
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -18,6 +21,7 @@ class AuthService(
     private val jwtTokenProvider: JwtTokenProvider,
     private val memberRepository: MemberRepository,
     private val fcmTokenService: FcmTokenService,
+    private val refreshTokenService: RefreshTokenService,
 ) {
 
     @Transactional
@@ -34,6 +38,7 @@ class AuthService(
             return SignInUpResponse(
                 userId = member.id,
                 accessToken = jwtTokenProvider.createAccessToken(member.id),
+                refreshToken = refreshTokenService.issue(member.id),
             )
         }
 
@@ -53,6 +58,7 @@ class AuthService(
         return SignInUpResponse(
             userId = registeredMember.id,
             accessToken = registerToken,
+            refreshToken = refreshTokenService.issue(registeredMember.id),
         )
     }
 
@@ -70,6 +76,7 @@ class AuthService(
             return SignInUpResponse(
                 userId = member.id,
                 accessToken = jwtTokenProvider.createAccessToken(member.id),
+                refreshToken = refreshTokenService.issue(member.id),
             )
         }
 
@@ -89,11 +96,22 @@ class AuthService(
         return SignInUpResponse(
             userId = registeredMember.id,
             accessToken = registerToken,
+            refreshToken = refreshTokenService.issue(registeredMember.id),
+        )
+    }
+
+    @Transactional(noRollbackFor = [UnauthorizedException::class])
+    fun refresh(request: TokenRefreshRequest): TokenRefreshResponse {
+        val rotation = refreshTokenService.rotate(request.refreshToken)
+        return TokenRefreshResponse(
+            accessToken = jwtTokenProvider.createAccessToken(rotation.memberId),
+            refreshToken = rotation.plainRefreshToken,
         )
     }
 
     @Transactional
     fun logout(memberId: Long, request: LogoutRequest) {
         fcmTokenService.deleteToken(memberId, request.fcmDeviceToken)
+        request.refreshToken?.let { refreshTokenService.revokeByPlainToken(it) }
     }
 }

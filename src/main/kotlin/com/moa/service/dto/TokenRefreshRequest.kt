@@ -2,8 +2,7 @@ package com.moa.service.dto
 
 import jakarta.validation.constraints.NotBlank
 
-data class LogoutRequest(
+data class TokenRefreshRequest(
     @field:NotBlank
-    val fcmDeviceToken: String,
-    val refreshToken: String? = null,
+    val refreshToken: String,
 )

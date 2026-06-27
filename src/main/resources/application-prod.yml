@@ -32,6 +32,7 @@ management:
 jwt:
   secret-key: ${secret.jwt.prod.access.secret-key}
   expiration-milliseconds: ${secret.jwt.prod.access.expiration}
+  refresh-expiration-milliseconds: ${secret.jwt.prod.refresh.expiration}
 
 oidc:
   kakao:
