@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest
 import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
 
 @DataJpaTest
 class RefreshTokenRepositoryTest @Autowired constructor(
@@ -45,7 +46,8 @@ class RefreshTokenRepositoryTest @Autowired constructor(
     fun `이미 revoke 된 행은 다시 덮어쓰지 않는다`() {
         refreshTokenRepository.save(RefreshToken(memberId = 1L, tokenHash = "active-1", familyId = "fam-1", expiresAt = future))
         refreshTokenRepository.save(RefreshToken(memberId = 1L, tokenHash = "active-2", familyId = "fam-1", expiresAt = future))
-        val alreadyRevokedAt = LocalDateTime.now().minusDays(1)
+        // DB datetime(6) 은 마이크로초까지만 저장하므로, 나노초를 잘라 왕복 후에도 동일하게 비교한다.
+        val alreadyRevokedAt = LocalDateTime.now().minusDays(1).truncatedTo(ChronoUnit.MICROS)
         val preRevoked = refreshTokenRepository.save(
             RefreshToken(memberId = 1L, tokenHash = "revoked-1", familyId = "fam-1", expiresAt = future)
                 .apply { revoke(alreadyRevokedAt) }
