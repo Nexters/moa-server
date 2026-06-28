@@ -42,6 +42,7 @@ class RefreshTokenServiceTest {
         val old = RefreshToken(memberId = 1L, tokenHash = "old-hash", familyId = "fam-1", expiresAt = now.plusDays(10))
         every { hasher.hash("old-plain") } returns "old-hash"
         every { repository.findByTokenHash("old-hash") } returns old
+        every { repository.revokeIfActive(old.id, now) } returns 1
         every { hasher.generate() } returns "new-plain"
         every { hasher.hash("new-plain") } returns "new-hash"
         every { jwtTokenProvider.refreshExpiresAt(any()) } returns now.plusDays(30)
@@ -52,9 +53,25 @@ class RefreshTokenServiceTest {
 
         assertThat(result.plainRefreshToken).isEqualTo("new-plain")
         assertThat(result.memberId).isEqualTo(1L)
-        assertThat(old.revokedAt).isEqualTo(now)
+        verify { repository.revokeIfActive(old.id, now) }
         assertThat(saved.captured.familyId).isEqualTo("fam-1")
         assertThat(saved.captured.tokenHash).isEqualTo("new-hash")
+    }
+
+    @Test
+    fun `rotate 는 동시 요청으로 이미 회전된 토큰이면 새 토큰을 발급하지 않고 예외를 던진다`() {
+        // revokeIfActive 가 0 을 반환 = 동시 요청이 먼저 회전함 → 1토큰 1회전 보장(double-spend 차단).
+        val now = LocalDateTime.now()
+        val active = RefreshToken(memberId = 1L, tokenHash = "h", familyId = "fam-1", expiresAt = now.plusDays(10))
+        every { hasher.hash("plain") } returns "h"
+        every { repository.findByTokenHash("h") } returns active
+        every { repository.revokeIfActive(active.id, now) } returns 0
+
+        org.junit.jupiter.api.assertThrows<com.moa.common.exception.UnauthorizedException> {
+            sut.rotate("plain", now)
+        }
+
+        verify(exactly = 0) { repository.save(any()) }
     }
 
     @Test
@@ -73,13 +90,15 @@ class RefreshTokenServiceTest {
     }
 
     @Test
-    fun `rotate 는 존재하지 않는 토큰이면 예외를 던진다`() {
+    fun `rotate 는 존재하지 않는 토큰이면 EXPIRED_TOKEN 으로 예외를 던진다`() {
         every { hasher.hash("ghost") } returns "ghost-hash"
         every { repository.findByTokenHash("ghost-hash") } returns null
 
-        org.junit.jupiter.api.assertThrows<com.moa.common.exception.UnauthorizedException> {
+        val ex = org.junit.jupiter.api.assertThrows<com.moa.common.exception.UnauthorizedException> {
             sut.rotate("ghost", LocalDateTime.now())
         }
+        // 무효한 refresh 의 모든 케이스(없음/폐기/만료)를 동일 코드로 통일 — 클라이언트 일관 + 존재 비노출.
+        assertThat(ex.errorCode).isEqualTo(com.moa.common.exception.ErrorCode.EXPIRED_TOKEN)
     }
 
     @Test

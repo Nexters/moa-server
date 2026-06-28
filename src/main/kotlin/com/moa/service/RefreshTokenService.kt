@@ -30,7 +30,7 @@ class RefreshTokenService(
     @Transactional(noRollbackFor = [UnauthorizedException::class])
     fun rotate(plainRefreshToken: String, now: LocalDateTime = LocalDateTime.now()): RotationResult {
         val current = refreshTokenRepository.findByTokenHash(hasher.hash(plainRefreshToken))
-            ?: throw UnauthorizedException()
+            ?: throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)
 
         if (current.revokedAt != null) {
             log.warn(
@@ -44,7 +44,10 @@ class RefreshTokenService(
             throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)
         }
 
-        current.revoke(now)
+        // 동시 요청 중 하나만 성공(1), 나머지는 0 → 1토큰 1회전 보장.
+        if (refreshTokenRepository.revokeIfActive(current.id, now) == 0) {
+            throw UnauthorizedException(ErrorCode.EXPIRED_TOKEN)
+        }
         val newPlain = persist(current.memberId, current.familyId, now)
         return RotationResult(memberId = current.memberId, plainRefreshToken = newPlain)
     }

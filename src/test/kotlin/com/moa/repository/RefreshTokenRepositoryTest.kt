@@ -43,6 +43,27 @@ class RefreshTokenRepositoryTest @Autowired constructor(
     }
 
     @Test
+    fun `revokeIfActive 는 활성 행을 revoke 하고 1을 반환한다`() {
+        val saved = refreshTokenRepository.save(RefreshToken(1L, "h1", "fam-1", future))
+
+        val updated = refreshTokenRepository.revokeIfActive(saved.id, LocalDateTime.now())
+
+        assertThat(updated).isEqualTo(1)
+        assertThat(refreshTokenRepository.findByTokenHash("h1")!!.revokedAt).isNotNull()
+    }
+
+    @Test
+    fun `revokeIfActive 는 이미 revoke 된 행이면 0을 반환한다 (동시 회전 방지)`() {
+        val saved = refreshTokenRepository.save(
+            RefreshToken(1L, "h1", "fam-1", future).apply { revoke(LocalDateTime.now().minusMinutes(1)) }
+        )
+
+        val updated = refreshTokenRepository.revokeIfActive(saved.id, LocalDateTime.now())
+
+        assertThat(updated).isEqualTo(0)
+    }
+
+    @Test
     fun `이미 revoke 된 행은 다시 덮어쓰지 않는다`() {
         refreshTokenRepository.save(RefreshToken(memberId = 1L, tokenHash = "active-1", familyId = "fam-1", expiresAt = future))
         refreshTokenRepository.save(RefreshToken(memberId = 1L, tokenHash = "active-2", familyId = "fam-1", expiresAt = future))
