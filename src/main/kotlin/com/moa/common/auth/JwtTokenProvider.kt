@@ -19,6 +19,9 @@ class JwtTokenProvider(
 
     @Value("\${jwt.expiration-milliseconds}")
     private val accessTokenExpirationInMilliseconds: Long,
+
+    @Value("\${jwt.refresh-expiration-milliseconds}")
+    private val refreshTokenExpirationInMilliseconds: Long,
 ) {
 
     private val accessKey = Keys.hmacShaKeyFor(accessTokenSecretKey.toByteArray(StandardCharsets.UTF_8))
@@ -34,6 +37,9 @@ class JwtTokenProvider(
             .signWith(accessKey)
             .compact()
     }
+
+    fun refreshExpiresAt(from: LocalDateTime = LocalDateTime.now()): LocalDateTime =
+        from.plus(Duration.ofMillis(refreshTokenExpirationInMilliseconds))
 
     fun extractToken(request: HttpServletRequest): String? {
         val bearerToken = request.getHeader("Authorization")

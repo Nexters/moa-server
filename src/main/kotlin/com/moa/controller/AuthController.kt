@@ -36,4 +36,11 @@ class AuthController(
         authService.logout(member.id, request)
         return ApiResponse.success()
     }
+
+    @PostMapping("/api/v1/auth/refresh")
+    fun refresh(
+        @RequestBody @Valid request: TokenRefreshRequest,
+    ): ResponseEntity<ApiResponse<TokenRefreshResponse>> {
+        return ResponseEntity.ok(ApiResponse.success(authService.refresh(request)))
+    }
 }

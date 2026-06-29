@@ -1,7 +1,6 @@
 package com.moa.service.dto
 
-data class SignInUpResponse(
-    val userId: Long,
+data class TokenRefreshResponse(
     val accessToken: String,
     val refreshToken: String,
 )
