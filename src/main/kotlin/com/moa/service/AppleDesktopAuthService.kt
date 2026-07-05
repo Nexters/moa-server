@@ -5,10 +5,10 @@ import com.moa.common.exception.ErrorCode
 import com.moa.common.exception.UnauthorizedException
 import com.moa.common.oidc.AppleTokenClient
 import com.moa.common.oidc.OidcIdTokenValidator
+import com.moa.common.oidc.OidcProviderConfig
 import com.moa.entity.ProviderType
 import com.moa.service.dto.SignInUpResponse
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.util.UriComponentsBuilder
 
@@ -18,9 +18,9 @@ class AppleDesktopAuthService(
     private val oidcIdTokenValidator: OidcIdTokenValidator,
     private val authService: AuthService,
     private val exchangeCodeStore: ExchangeCodeStore,
-    @Value("\${oidc.apple.desktop-redirect-uri:http://127.0.0.1:17171/callback}")
-    private val desktopRedirectUri: String,
+    config: OidcProviderConfig,
 ) {
+    private val desktopRedirectUri = config.apple.desktopRedirectUri
     private val log = LoggerFactory.getLogger(javaClass)
 
     /** Apple callback 처리 → localhost 리다이렉트 URL(성공/실패 모두 앱이 처리). */

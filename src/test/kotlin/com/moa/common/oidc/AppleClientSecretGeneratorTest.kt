@@ -15,10 +15,17 @@ class AppleClientSecretGeneratorTest {
         val privB64 = Base64.getEncoder().encodeToString(kp.private.encoded)
 
         val sut = AppleClientSecretGenerator(
-            teamId = "TEAM123456",
-            clientId = "kr.moa-official.web",
-            keyId = "KEY1234567",
-            privateKeyBase64 = privB64,
+            OidcProviderConfig(
+                kakao = OidcProviderConfig.KakaoProviderProperties(jwksUri = "unused"),
+                apple = OidcProviderConfig.AppleProviderProperties(
+                    jwksUri = "unused",
+                    clientId = "kr.moa-official.web",
+                    teamId = "TEAM123456",
+                    keyId = "KEY1234567",
+                    privateKey = privB64,
+                    redirectUri = "https://api.moa.example/apple/desktop/callback",
+                ),
+            ),
         )
 
         val jwt = sut.generate()

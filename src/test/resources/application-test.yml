@@ -14,3 +14,10 @@ oidc:
   apple:
     jwks-uri: ${secret.oauth.apple.jwks-uri}
     cache-ttl-seconds: ${secret.oauth.cache-ttl-seconds}
+    # ── 아래 5개는 테스트 전용 더미 값 (컨텍스트 부팅용, 실제 Apple 서비스와 무관) ──
+    client-id: test-client-id.do-not-use
+    team-id: TESTTEAM00
+    key-id: TESTKEY000
+    # 테스트 전용 일회용 EC P-256 키 — 실서비스 값이 아닌 테스트 값
+    private-key: MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgl4zl/NtEbMusENwEktm8yxGgW7kBI4odCayvCA20sQWhRANCAATTiSGLlOJOUbj+nfVceVSPt7zNMd10H9pQqyctHqxXqnS9FQ3HYDKIBqg3xXT1l6HbtgMAcMScHHOFincw6hx6
+    redirect-uri: https://test.invalid/apple/desktop/callback
