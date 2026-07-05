@@ -17,6 +17,7 @@ enum class ErrorCode(
     UNAUTHORIZED("UNAUTHORIZED", "인증되지 않은 사용자입니다"),
     INVALID_ID_TOKEN("INVALID_ID_TOKEN", "유효하지 않은 ID 토큰입니다"),
     EXPIRED_TOKEN("EXPIRED_TOKEN", "토큰이 만료되었습니다"),
+    INVALID_EXCHANGE_CODE("INVALID_EXCHANGE_CODE", "유효하지 않은 교환 코드입니다"),
 
     // 403
     ONBOARDING_INCOMPLETE("ONBOARDING_INCOMPLETE", "온보딩이 완료되지 않았습니다"),

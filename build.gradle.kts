@@ -37,6 +37,7 @@ dependencies {
     runtimeOnly("com.mysql:mysql-connector-j")
 
     // etc
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
