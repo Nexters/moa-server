@@ -27,78 +27,33 @@ class AuthService(
     @Transactional
     fun kakaoSignInUp(request: KaKaoSignInUpRequest): SignInUpResponse {
         val userInfo = oidcIdTokenValidator.validate(ProviderType.KAKAO, request.idToken)
-
-        val member = memberRepository.findByProviderAndProviderSubject(
-            provider = userInfo.provider,
-            providerSubject = userInfo.subject,
-        )
-
-        member?.let {
-            request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(member.id, token) }
-            return SignInUpResponse(
-                userId = member.id,
-                accessToken = jwtTokenProvider.createAccessToken(member.id),
-                refreshToken = refreshTokenService.issue(member.id),
-            )
-        }
-
-        val registeredMember = memberRepository.save(
-            Member(
-                provider = ProviderType.KAKAO,
-                providerSubject = userInfo.subject,
-            )
-        )
-
-        request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(registeredMember.id, token) }
-
-        val registerToken = jwtTokenProvider.createAccessToken(
-            registeredMember.id
-        )
-
-        return SignInUpResponse(
-            userId = registeredMember.id,
-            accessToken = registerToken,
-            refreshToken = refreshTokenService.issue(registeredMember.id),
-        )
+        return signInUp(ProviderType.KAKAO, userInfo.subject, request.fcmDeviceToken)
     }
 
     @Transactional
     fun appleSignInUp(request: AppleSignInUpRequest): SignInUpResponse {
         val userInfo = oidcIdTokenValidator.validate(ProviderType.APPLE, request.idToken)
-
-        val member = memberRepository.findByProviderAndProviderSubject(
-            provider = userInfo.provider,
-            providerSubject = userInfo.subject,
-        )
-
-        member?.let {
-            request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(member.id, token) }
-            return SignInUpResponse(
-                userId = member.id,
-                accessToken = jwtTokenProvider.createAccessToken(member.id),
-                refreshToken = refreshTokenService.issue(member.id),
-            )
-        }
-
-        val registeredMember = memberRepository.save(
-            Member(
-                provider = ProviderType.APPLE,
-                providerSubject = userInfo.subject,
-            )
-        )
-
-        request.fcmDeviceToken?.let { token -> fcmTokenService.registerToken(registeredMember.id, token) }
-
-        val registerToken = jwtTokenProvider.createAccessToken(
-            registeredMember.id
-        )
-
-        return SignInUpResponse(
-            userId = registeredMember.id,
-            accessToken = registerToken,
-            refreshToken = refreshTokenService.issue(registeredMember.id),
-        )
+        return signInUp(ProviderType.APPLE, userInfo.subject, request.fcmDeviceToken)
     }
+
+    /** subject 는 검증이 끝난 값이어야 한다. 회원 확정과 토큰 발급을 한 트랜잭션으로 묶는다. */
+    @Transactional
+    fun signInUp(provider: ProviderType, subject: String, fcmDeviceToken: String? = null): SignInUpResponse {
+        val memberId = resolveMemberId(provider, subject)
+        fcmDeviceToken?.let { fcmTokenService.registerToken(memberId, it) }
+        return issueTokens(memberId)
+    }
+
+    private fun resolveMemberId(provider: ProviderType, subject: String): Long {
+        memberRepository.findByProviderAndProviderSubject(provider, subject)?.let { return it.id }
+        return memberRepository.save(Member(provider = provider, providerSubject = subject)).id
+    }
+
+    private fun issueTokens(memberId: Long): SignInUpResponse = SignInUpResponse(
+        userId = memberId,
+        accessToken = jwtTokenProvider.createAccessToken(memberId),
+        refreshToken = refreshTokenService.issue(memberId),
+    )
 
     @Transactional(noRollbackFor = [UnauthorizedException::class])
     fun refresh(request: TokenRefreshRequest): TokenRefreshResponse {
