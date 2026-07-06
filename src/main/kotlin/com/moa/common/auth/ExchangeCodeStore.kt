@@ -1,6 +1,7 @@
 package com.moa.common.auth
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import com.github.benmanes.caffeine.cache.Ticker
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.time.Duration
@@ -15,10 +16,12 @@ import java.time.Duration
 class ExchangeCodeStore(
     @Value("\${auth.exchange-code.ttl-seconds:120}") ttlSeconds: Long = 120,
     @Value("\${auth.exchange-code.max-size:10000}") maxSize: Long = 10_000,
+    ticker: Ticker = Ticker.systemTicker(), // 테스트에서 시간을 제어하기 위한 주입
 ) {
     private val cache = Caffeine.newBuilder()
         .expireAfterWrite(Duration.ofSeconds(ttlSeconds))
         .maximumSize(maxSize)
+        .ticker(ticker)
         .build<String, String>()
 
     /** 검증된 OIDC subject 를 1회용 코드로 봉인한다. 회원 생성은 consume 이후로 미룬다. */
