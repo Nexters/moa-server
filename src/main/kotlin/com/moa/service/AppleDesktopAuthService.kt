@@ -27,7 +27,7 @@ class AppleDesktopAuthService(
     fun callback(code: String?, state: String?, appleError: String? = null): String {
         if (code.isNullOrBlank()) {
             log.warn("Apple desktop callback without code: error={}", appleError)
-            return redirect("error", appleError ?: "login_failed", state)
+            return redirect("error", appleError?.takeIf { it.isNotBlank() } ?: "login_failed", state)
         }
         return try {
             val idToken = appleTokenClient.exchangeCodeForIdToken(code)
