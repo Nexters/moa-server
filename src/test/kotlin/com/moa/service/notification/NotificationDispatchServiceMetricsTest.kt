@@ -70,11 +70,7 @@ class NotificationDispatchServiceMetricsTest {
         }
     }
     private val registry = SimpleMeterRegistry()
-    private val clock = mockk<NotificationScheduleClock>().apply {
-        // 기본: 오늘 11:15. 11시 예약 알림이 어떤 type 이어도 not expired 인 상태.
-        // CLOCK_IN TTL=30분 → deadline=11:30 > 11:15 → not expired.
-        every { now() } returns java.time.LocalDateTime.of(TODAY, java.time.LocalTime.of(11, 15))
-    }
+    private val clock = mockk<NotificationScheduleClock>()
     private val ttlPolicy = NotificationTtlPolicy(clock)
 
     private val sut = NotificationDispatchService(
@@ -97,7 +93,7 @@ class NotificationDispatchServiceMetricsTest {
     fun `토큰 없는 회원의 알림은 failed_no_token 카운터를 증가시킨다`() {
         notificationLogs += notificationLog(memberId = 1L, type = NotificationType.CLOCK_IN)
 
-        sut.processNotifications(TODAY, NOON)
+        sut.processNotifications(TODAY, DISPATCH_TIME)
 
         val attempts = registry.find("moa.notification.dispatch.attempts")
             .tag("notification_type", "CLOCK_IN").counter()
@@ -114,7 +110,7 @@ class NotificationDispatchServiceMetricsTest {
         fcmTokens += FcmToken(memberId = 1L, token = "tok-1")
         every { messageBuilder.buildMessage(any(), any()) } throws IllegalStateException("boom")
 
-        sut.processNotifications(TODAY, NOON)
+        sut.processNotifications(TODAY, DISPATCH_TIME)
 
         val failed = registry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "CLOCK_OUT").tag("reason", "build").counter()
@@ -133,7 +129,7 @@ class NotificationDispatchServiceMetricsTest {
             )
         }
 
-        sut.processNotifications(TODAY, NOON)
+        sut.processNotifications(TODAY, DISPATCH_TIME)
 
         val fallback = registry.find("moa.notification.message.fallback")
             .tag("notification_type", "CLOCK_OUT").tag("reason", "earnings_error").counter()
@@ -153,7 +149,7 @@ class NotificationDispatchServiceMetricsTest {
             List(reqs.size) { false }
         }
 
-        sut.processNotifications(TODAY, NOON)
+        sut.processNotifications(TODAY, DISPATCH_TIME)
 
         val failed = registry.find("moa.notification.dispatch.failed")
             .tag("notification_type", "PAYDAY").tag("reason", "fcm").counter()
@@ -173,7 +169,7 @@ class NotificationDispatchServiceMetricsTest {
         notificationLogs += expiredLog
         fcmTokens += FcmToken(memberId = 1L, token = "tok-1")
 
-        sut.processNotifications(TODAY, NOON)
+        sut.processNotifications(TODAY, DISPATCH_TIME)
 
         val expired = registry.find("moa.notification.dispatch.expired")
             .tag("notification_type", "CLOCK_IN").counter()
@@ -195,5 +191,9 @@ class NotificationDispatchServiceMetricsTest {
     companion object {
         private val TODAY: LocalDate = LocalDate.of(2026, 5, 1)
         private val NOON: LocalTime = LocalTime.NOON
+
+        // 11시 예약 알림(NOON-1h)이 어떤 type 이어도 not expired 인 디스패치 시각.
+        // CLOCK_IN TTL=30분 → deadline=11:30 > 11:15.
+        private val DISPATCH_TIME: LocalTime = LocalTime.of(11, 15)
     }
 }

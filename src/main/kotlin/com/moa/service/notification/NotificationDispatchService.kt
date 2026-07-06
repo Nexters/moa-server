@@ -75,7 +75,10 @@ class NotificationDispatchService(
         pendingLogs.groupingBy { it.notificationType.name }.eachCount()
             .forEach { (type, n) -> attemptsCounter(type).increment(n.toDouble()) }
 
-        val (expiredLogs, activeLogs) = pendingLogs.partition { notificationTtlPolicy.isExpired(it) }
+        // TTL 판정도 인자로 받은 시각을 쓴다 — 한 디스패치 실행의 시간 기준을 단일화해야
+        // KST 고정 clock 과 러너 시스템 존이 어긋나는 시간대(UTC 15~24시)에도 결정적이다.
+        val dispatchNow = date.atTime(currentTime)
+        val (expiredLogs, activeLogs) = pendingLogs.partition { notificationTtlPolicy.isExpired(it, dispatchNow) }
         expiredLogs.groupingBy { it.notificationType.name }.eachCount()
             .forEach { (type, n) -> expiredCounter(type).increment(n.toDouble()) }
         expiredLogs.forEach {
